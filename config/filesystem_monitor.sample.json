@@ -1,0 +1,21 @@
+{
+  "monitor": {
+    "enabled": true,
+    "interval_seconds": 30,
+    "manifests_dir": "manifests",
+    "roots": [
+      {
+        "path": "IMAGES",
+        "manifest": "imagery.ndjson",
+        "include": ["**/*.png", "**/*.jpg"],
+        "exclude": ["**/_thumbnails/**"]
+      },
+      {
+        "path": "EMWIN",
+        "manifest": "emwin.ndjson",
+        "include": ["**/*.txt"],
+        "exclude": ["**/_state/**"]
+      }
+    ]
+  }
+}

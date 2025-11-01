@@ -1,0 +1,8 @@
+{
+  "data_root": "/var/satellite/satellite_raw",
+  "state_dir": "/var/satellite/state",
+  "dry_run": true,
+  "logging": {
+    "level": "INFO"
+  }
+}

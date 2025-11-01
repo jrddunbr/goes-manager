@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily GOES retention policy enforcement
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+Unit=goes-retention.service
+
+[Install]
+WantedBy=timers.target

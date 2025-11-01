@@ -1,0 +1,48 @@
+{
+  "retention": {
+    "enabled": true,
+    "interval_seconds": 3600,
+    "rules": [
+      {
+        "name": "Mesoscale imagery retention",
+        "directories": ["IMAGES"],
+        "include": ["**/*.png"],
+        "exclude": ["**/_thumbnails/**"],
+        "actions": [
+          {
+            "after": "7d",
+            "type": "move",
+            "target": "ARCHIVE/WARM/IMAGES"
+          },
+          {
+            "after": "90d",
+            "type": "compress",
+            "target": "ARCHIVE/SEASONAL/IMAGES",
+            "compression": "zstd"
+          },
+          {
+            "after": "400d",
+            "type": "delete"
+          }
+        ]
+      },
+      {
+        "name": "EMWIN bulletins",
+        "directories": ["EMWIN"],
+        "include": ["**/*.txt"],
+        "actions": [
+          {
+            "after": "30d",
+            "type": "compress",
+            "target": "ARCHIVE/EMWIN",
+            "compression": "zstd"
+          },
+          {
+            "after": "400d",
+            "type": "delete"
+          }
+        ]
+      }
+    ]
+  }
+}

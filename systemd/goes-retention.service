@@ -1,0 +1,17 @@
+[Unit]
+Description=GOES retention policy enforcement
+After=network.target
+
+[Service]
+Type=simple
+User=goes
+Group=goes
+WorkingDirectory=/srv/goes-manager
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/srv/goes-manager/src
+ExecStart=/usr/bin/python3 -m goes_retention --common-config /srv/goes-manager/config/common.json --config /srv/goes-manager/config/retention.json --execute
+Restart=on-failure
+RestartSec=20s
+
+[Install]
+WantedBy=multi-user.target

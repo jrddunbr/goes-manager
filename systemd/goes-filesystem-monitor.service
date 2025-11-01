@@ -1,0 +1,17 @@
+[Unit]
+Description=GOES filesystem monitor manifest writer
+After=network.target
+
+[Service]
+Type=simple
+User=goes
+Group=goes
+WorkingDirectory=/srv/goes-manager
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/srv/goes-manager/src
+ExecStart=/usr/bin/python3 -m goes_filesystem_monitor --common-config /srv/goes-manager/config/common.json --config /srv/goes-manager/config/filesystem_monitor.json
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
