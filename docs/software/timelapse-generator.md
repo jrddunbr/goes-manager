@@ -7,7 +7,7 @@ Automate creation of rolling timelapse videos (MP4/WEBM/GIF) from GOES imagery s
 - Watch filesystem changes or read monitor manifests for imagery additions (e.g., GOES-19 Full Disk/Mesoscale).
 - Maintain queues of frame paths per product/band and window (e.g., last 6 hours, last day).
 - Invoke encoding pipelines (ffmpeg) to produce timelapse files.
-- Store outputs in a dedicated directory (e.g., `satellite_raw/derivatives/timelapses/`) with consistent naming conventions.
+- Store outputs in a dedicated directory (e.g., `satellite_raw/TIMELAPSE/`)
 - Publish lightweight manifests describing available timelapses (time span, band, resolution).
 
 ## Inputs
@@ -23,4 +23,4 @@ Automate creation of rolling timelapse videos (MP4/WEBM/GIF) from GOES imagery s
 - Support parallel encoding workers to keep up with Mesoscale cadence.
 - Handle missing frames gracefully (interpolate or skip).
 - Provide CLI hooks to regenerate historical timelapses on demand.
-- Evaluate hardware-accelerated encoding (e.g., VAAPI) if CPU load becomes critical.
+- Evaluate hardware-accelerated encoding (e.g., VAAPI) if possible.

@@ -83,4 +83,10 @@ sudo systemctl enable --now goes-filesystem-monitor.service
 - CLI wrapper: `src/goes_filesystem_monitor/cli.py`
 - Shared helpers: `src/goes_manager/config.py`, `src/goes_manager/util.py`
 
-Future work can add inotify/watchfiles support for lower latency, manifest rotation policies, or richer metadata extraction from filenames. The current polling implementation keeps dependencies minimal while providing deterministic manifests for the rest of the toolchain.
+## Future work 
+
+* add inotify/watchfiles support for lower latency
+* manifest rotation policies, or richer metadata extraction from filenames
+* time-scoped (eg, last 3 hours) manifests to reduce file size/lookup time
+
+The current polling implementation keeps dependencies minimal while providing deterministic manifests for the rest of the toolchain.
