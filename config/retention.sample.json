@@ -6,7 +6,7 @@
       {
         "name": "Mesoscale imagery retention",
         "directories": ["IMAGES"],
-        "include": ["**/*.png"],
+        "include": ["**/*.png", "**/*.cbor"],
         "exclude": ["**/_thumbnails/**"],
         "actions": [
           {
