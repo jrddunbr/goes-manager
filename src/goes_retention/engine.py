@@ -171,12 +171,49 @@ class RetentionManager:
             if destination.exists():
                 logger.warning("Destination already exists, overwriting: %s", destination)
             try:
+                source_parent = file_path.parent
                 shutil.move(str(file_path), str(destination))
                 logger.info("Moved %s -> %s (rule=%s)", file_path, destination, rule.name)
+                # Remove empty parent directories after successful move
+                self._cleanup_empty_directories(source_parent, rule)
             except Exception as exc:  # noqa: BLE001
                 logger.error("Failed to move %s -> %s: %s", file_path, destination, exc)
                 detail = f"error: {exc}"
         return RetentionActionResult(rule=rule.name, action="move", path=file_path, detail=detail)
+
+    def _cleanup_empty_directories(self, directory: Path, rule: RetentionRuleConfig) -> None:
+        """Remove empty parent directories up to the rule's base directory."""
+        try:
+            # Only clean up directories that are under one of the rule's directories
+            rule_directories = [d.resolve() for d in rule.directories]
+            current = directory.resolve()
+
+            # Walk up the directory tree
+            while current != current.parent:
+                # Stop if we've reached a rule base directory
+                if current in rule_directories:
+                    break
+
+                # Check if this directory is under any rule directory
+                under_rule_dir = any(current.is_relative_to(base) for base in rule_directories)
+                if not under_rule_dir:
+                    break
+
+                # Try to remove if empty
+                try:
+                    if not any(current.iterdir()):
+                        current.rmdir()
+                        logger.info("Removed empty directory %s (rule=%s)", current, rule.name)
+                    else:
+                        # Directory not empty, stop walking up
+                        break
+                except OSError:
+                    # Directory not empty or permission error, stop trying
+                    break
+
+                current = current.parent
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to cleanup empty directories from %s: %s", directory, exc)
 
     def _compress(
         self,
