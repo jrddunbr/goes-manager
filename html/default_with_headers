@@ -1,0 +1,49 @@
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    root /var/satellite/satellite_raw;
+    index index.html index.htm index.nginx-debian.html;
+    server_name _;
+
+    location / {
+        try_files $uri $uri/ =404;
+        fancyindex on;
+        fancyindex_default_sort date_desc;
+        fancyindex_header "/_fancy/satellite_raw-header.html";
+    }
+
+    location /EMWIN/ {
+        fancyindex on;
+        fancyindex_default_sort date_desc;
+        fancyindex_header "/_fancy/EMWIN-header.html";
+    }
+
+    location /IMAGES/ {
+        fancyindex on;
+        fancyindex_default_sort date_desc;
+        fancyindex_header "/_fancy/IMAGES-header.html";
+    }
+
+    location /IMAGES/NWS/ {
+        fancyindex on;
+        fancyindex_default_sort date_desc;
+        fancyindex_header "/_fancy/IMAGES-NWS-header.html";
+    }
+
+    location /L2/ {
+        fancyindex on;
+        fancyindex_default_sort date_desc;
+        fancyindex_header "/_fancy/L2-header.html";
+    }
+
+    location /Admin%20Messages/ {
+        fancyindex on;
+        fancyindex_default_sort date_desc;
+        fancyindex_header "/_fancy/AdminMessages-header.html";
+    }
+
+    location /_fancy/ {
+        internal;
+    }
+}

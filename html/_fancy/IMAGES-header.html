@@ -1,0 +1,12 @@
+<div class="catalog-intro">
+  <h1>GOES ABI Imagery</h1>
+  <p>Quicklook PNGs and RGB composites produced from GOES ABI scans. GOES-19 is the current production feed; GOES-16/18 folders retain historical context.</p>
+  <ul>
+    <li><strong>GOES-19/Full Disk</strong> </li>
+    <li><strong>GOES-19/Mesoscale 1&ndash;2</strong> &mdash; ≈1.5&nbsp;GiB combined, sampled every few minutes.</li>
+    <li><strong>GOES-16</strong> &mdash; Legacy February&ndash;March 2025 coverage</li>
+    <li><strong>GOES-18</strong> &mdash; Sparse full-disk captures through November 2025</li>
+    <li><strong>NWS/</strong> &mdash; Human-generated forecast charts.</li>
+  </ul>
+  <p>Each timestamp folder contains ABI bands (<code>G19_13_YYYYMMDDThhmmssZ.png</code>), RGB composites, and a <code>product.cbor</code> metadata file. Preserve these <code>.cbor</code> files when copying imagery if you intend to use them in satdump-ui or other tools for processing satellite imagery as they contain important image metadata.</p>
+</div>
