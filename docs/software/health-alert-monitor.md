@@ -51,3 +51,5 @@ Use `--once` for ad-hoc checks or `--interval` (seconds) to override the loop ca
 I want to make this tool more useful for helping figure out if there are antenna feed issues. I'd also like to parse the Satdump logs and provide more useful insights into what/why failures occur.
 
 It would be neat to integrate this with rotctl so that you can get optimal antenna alignment automatically. The Discovery Dish is going to have a rotator available at some point in the future, and having the ability to align with the satellite with backing SNR data for precise localized alignment would be awesome.
+
+As for the file storage monitoring, I'd like to have a forecasted burn rate for each data type and retention policy. If you can plan for when you need more storage or to clear old data manually, that would be helpful.

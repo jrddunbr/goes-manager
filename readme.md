@@ -2,6 +2,8 @@
 
 A comprehensive system for managing GOES (Geostationary Operational Environmental Satellite) data lifecycles, including monitoring, retention, and health alerting.
 
+<img src="docs/false-color-goes19.png" width="256" alt="GOES-19 False Color">
+
 ## Purpose
 
 GoesManager is designed to help efficiently manage large volumes of GOES satellite data. The system provides automated tools for:
@@ -116,4 +118,3 @@ See [LICENSE](LICENSE) file; standard MIT license.
 ## Support
 
 For documentation and guides, see the `docs/` directory. For issues and questions, please use the project's issue tracker on GitHub.
-```
