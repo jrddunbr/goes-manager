@@ -58,7 +58,7 @@ Timestamp folders (`YYYY-MM-DD_HH-MM-SS`) group all quicklook products for a sin
 ## Derivative Products
 - Timelapse animations: generate MP4/WEBM sequences per band or RGB composite over selectable windows (e.g., latest 6 hours). Preserve frames participating in a timelapse in the same retention tier as the source imagery so they can be regenerated if encoding parameters change.
 - Event highlights: create faster-cadence clips for significant weather (e.g., convective outbreaks) and publish alongside the raw directories via Nginx. Store manifest metadata (time range, band list, encoding settings) so the dashboard can link to pre-rendered media.
-- Downstream distribution: for web delivery keep encoded derivatives under `satellite_raw/derivatives/` (or similar) and reference them from the autoindex headers described in `html/` to guide visitors.
+- Downstream distribution: for web delivery keep encoded derivatives under `satellite_raw/derivatives/` (or similar) and reference them from the autoindex headers described in `web/` to guide visitors.
 
 ## Legacy Data (GOES-16/18)
 - Keep legacy imagery available for historical comparison but assign them to colder retention classes (see `retention.md`).
