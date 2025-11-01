@@ -25,3 +25,21 @@ Collect operational signals from local services (including SatDump) and dispatch
 - Include rate limiting to avoid flooding Discord on recurring issues.
 - Provide a CLI command for operators to trigger test alerts.
 - No authentication layer is required; access is controlled at the OS/SSH level.
+
+## Current Implementation
+
+- Packaged as `python -m goes_health_monitor` with CLI options mirroring the other GOES daemons.
+- Reads SatDump logs through the python-systemd journald APIs; review `config/health_monitor.sample.json` for available tuning fields.
+- Persists a JSON snapshot (default `state/health.json`) capturing recent SatDump messages, detected warnings/errors, and API reachability.
+- Optionally polls the SatDump HTTP API (default `http://localhost:8000/api/status`) and records results under the `satdump_api` key.
+- Supports Discord webhook alerts with cooldown control; alerts emit when severity crosses the configured `min_severity` threshold or after the cooldown expires while degraded.
+
+### Running the service
+
+```bash
+python -m goes_health_monitor \
+  --common-config config/common.json \
+  --config config/health_monitor.json
+```
+
+Use `--once` for ad-hoc checks or `--interval` (seconds) to override the loop cadence defined in configuration.

@@ -4,6 +4,7 @@ __all__ = [
     "AppConfig",
     "load_retention_app_config",
     "load_monitor_app_config",
+    "load_health_app_config",
 ]
 
-from .config import AppConfig, load_monitor_app_config, load_retention_app_config
+from .config import AppConfig, load_health_app_config, load_monitor_app_config, load_retention_app_config

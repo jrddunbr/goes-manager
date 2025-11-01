@@ -51,6 +51,38 @@ class MonitorConfig:
 
 
 @dataclass
+class HealthAlertConfig:
+    webhook_url: str
+    username: Optional[str] = None
+    min_severity: str = "warning"
+    cooldown_seconds: int = 600
+
+
+@dataclass
+class SatdumpApiConfig:
+    base_url: str = "http://localhost:8000"
+    status_endpoint: str = "/api/status"
+    timeout_seconds: float = 5.0
+
+
+@dataclass
+class HealthConfig:
+    enabled: bool = True
+    interval_seconds: int = 60
+    state_file: Path = Path("state/health.json")
+    satdump_unit: str = "satdump.service"
+    journal_lookback_seconds: int = 600
+    journal_max_gap_seconds: int = 900
+    journal_recent_limit: int = 50
+    error_keywords: List[str] = field(
+        default_factory=lambda: ["error", "critical", "cannot", "failed", "fatal"]
+    )
+    warning_keywords: List[str] = field(default_factory=lambda: ["warning", "degraded", "retry"])
+    satdump_api: Optional[SatdumpApiConfig] = None
+    alert: Optional[HealthAlertConfig] = None
+
+
+@dataclass
 class AppConfig:
     config_path: Path
     data_root: Path
@@ -59,6 +91,7 @@ class AppConfig:
     dry_run: bool = False
     retention: Optional[RetentionConfig] = None
     monitor: Optional[MonitorConfig] = None
+    health: Optional[HealthConfig] = None
 
 
 def _ensure_list(value, default):
@@ -177,6 +210,65 @@ def _merge_payload(base: Dict, override: Dict) -> Dict:
     return result
 
 
+def _load_health_config(data: dict, state_dir: Path) -> HealthConfig:
+    enabled = data.get("enabled", True)
+    interval_seconds = int(data.get("interval_seconds", 60))
+
+    state_file_value = data.get("state_file", "health.json")
+    state_file = resolve_path(state_dir, state_file_value)
+
+    satdump_unit = str(data.get("satdump_unit", "satdump.service"))
+
+    lookback_seconds = int(data.get("journal", {}).get("lookback_seconds", data.get("journal_lookback_seconds", 600)))
+    max_gap_seconds = int(data.get("journal", {}).get("max_gap_seconds", data.get("journal_max_gap_seconds", 900)))
+    recent_limit = int(data.get("journal", {}).get("recent_limit", data.get("journal_recent_limit", 50)))
+
+    error_keywords = _ensure_list(
+        data.get("journal", {}).get("error_keywords"),
+        ["error", "critical", "cannot", "failed", "fatal"],
+    )
+    warning_keywords = _ensure_list(
+        data.get("journal", {}).get("warning_keywords"),
+        ["warning", "degraded", "retry"],
+    )
+
+    api_cfg = None
+    api_data = data.get("satdump_api")
+    if api_data:
+        base_url = str(api_data.get("base_url", "http://localhost:8000"))
+        status_endpoint = str(api_data.get("status_endpoint", "/api/status"))
+        timeout_seconds = float(api_data.get("timeout", api_data.get("timeout_seconds", 5.0)))
+        api_cfg = SatdumpApiConfig(
+            base_url=base_url.rstrip("/"),
+            status_endpoint=status_endpoint if status_endpoint.startswith("/") else f"/{status_endpoint}",
+            timeout_seconds=timeout_seconds,
+        )
+
+    alert_cfg = None
+    alert_data = data.get("alert") or data.get("alerts")
+    if alert_data and alert_data.get("webhook_url"):
+        alert_cfg = HealthAlertConfig(
+            webhook_url=str(alert_data.get("webhook_url")),
+            username=alert_data.get("username"),
+            min_severity=str(alert_data.get("min_severity", "warning")).lower(),
+            cooldown_seconds=int(alert_data.get("cooldown_seconds", 600)),
+        )
+
+    return HealthConfig(
+        enabled=enabled,
+        interval_seconds=interval_seconds,
+        state_file=state_file,
+        satdump_unit=satdump_unit,
+        journal_lookback_seconds=lookback_seconds,
+        journal_max_gap_seconds=max_gap_seconds,
+        journal_recent_limit=recent_limit,
+        error_keywords=[str(item).lower() for item in error_keywords],
+        warning_keywords=[str(item).lower() for item in warning_keywords],
+        satdump_api=api_cfg,
+        alert=alert_cfg,
+    )
+
+
 def _build_app_config(payload: Dict, *, base_dir: Path, config_path: Path) -> AppConfig:
     data_root_value = payload.get("data_root") or payload.get("root") or "."
     data_root = resolve_path(base_dir, data_root_value)
@@ -196,6 +288,10 @@ def _build_app_config(payload: Dict, *, base_dir: Path, config_path: Path) -> Ap
     if "monitor" in payload:
         monitor_cfg = _load_monitor_config(payload["monitor"], data_root, state_dir)
 
+    health_cfg = None
+    if "health" in payload:
+        health_cfg = _load_health_config(payload["health"], state_dir)
+
     return AppConfig(
         config_path=config_path,
         data_root=data_root,
@@ -204,6 +300,7 @@ def _build_app_config(payload: Dict, *, base_dir: Path, config_path: Path) -> Ap
         dry_run=dry_run,
         retention=retention_cfg,
         monitor=monitor_cfg,
+        health=health_cfg,
     )
 
 
@@ -231,3 +328,16 @@ def load_monitor_app_config(common_config: str | Path, monitor_config: str | Pat
         raise ValueError("Monitor configuration file must include a 'monitor' section")
 
     return _build_app_config(payload, base_dir=common_path.parent, config_path=monitor_path)
+
+
+def load_health_app_config(common_config: str | Path, health_config: str | Path) -> AppConfig:
+    common_path = Path(common_config).resolve()
+    health_path = Path(health_config).resolve()
+
+    payload = _load_json(common_path)
+    payload = _merge_payload(payload, _load_json(health_path))
+
+    if "health" not in payload:
+        raise ValueError("Health configuration file must include a 'health' section")
+
+    return _build_app_config(payload, base_dir=common_path.parent, config_path=health_path)

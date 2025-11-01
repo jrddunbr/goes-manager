@@ -1,0 +1,35 @@
+{
+  "health": {
+    "enabled": true,
+    "interval_seconds": 60,
+    "state_file": "state/health.json",
+    "satdump_unit": "satdump.service",
+    "journal": {
+      "lookback_seconds": 900,
+      "max_gap_seconds": 900,
+      "recent_limit": 50,
+      "error_keywords": [
+        "error",
+        "cannot",
+        "failed",
+        "fatal"
+      ],
+      "warning_keywords": [
+        "warning",
+        "retry",
+        "degraded"
+      ]
+    },
+    "satdump_api": {
+      "base_url": "http://localhost:8000",
+      "status_endpoint": "/api",
+      "timeout_seconds": 5.0
+    },
+    "alert": {
+      "webhook_url": "https://discord.com/api/webhooks/REPLACE/ME",
+      "username": "GOES Health",
+      "min_severity": "error",
+      "cooldown_seconds": 900
+    }
+  }
+}

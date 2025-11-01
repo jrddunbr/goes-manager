@@ -1,0 +1,17 @@
+[Unit]
+Description=GOES SatDump health monitor
+After=network.target
+
+[Service]
+Type=simple
+User=goes
+Group=goes
+WorkingDirectory=/srv/goes-manager
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/srv/goes-manager/src
+ExecStart=/usr/bin/python3 -m goes_health_monitor --common-config /srv/goes-manager/config/common.json --config /srv/goes-manager/config/health_monitor.json
+Restart=on-failure
+RestartSec=15s
+
+[Install]
+WantedBy=multi-user.target
