@@ -4,8 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=goes
-Group=goes
+# this needs to run as the same user as satdump in order to allow filesystem write permissions in the target directory
+User=satdump
+Group=satdump
 WorkingDirectory=/srv/goes-manager
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONPATH=/srv/goes-manager/src
