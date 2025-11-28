@@ -136,7 +136,10 @@
         "include": [
           "**/*.gif",
           "**/*.jpg",
-          "**/*.png"
+          "**/*.png",
+          "*.gif",
+          "*.jpg",
+          "*.png"
         ],
         "exclude": [
           "**/text/**"
@@ -165,7 +168,9 @@
         ],
         "include": [
           "**/*.txt",
-          "**/*.TXT"
+          "**/*.TXT",
+          "*.txt",
+          "*.TXT"
         ],
         "actions": [
           {
