@@ -45,6 +45,15 @@ class RetentionSummary:
         self.results.append(result)
 
 
+@dataclass
+class ActionExecution:
+    result: Optional[RetentionActionResult]
+    new_path: Optional[Path] = None
+    new_root: Optional[Path] = None
+    deleted: bool = False
+    success: bool = True
+
+
 class RetentionManager:
     """Apply configured retention rules to the filesystem."""
 
@@ -78,15 +87,17 @@ class RetentionManager:
 
     def _process_rule(self, rule: RetentionRuleConfig, now: datetime, summary: RetentionSummary) -> int:
         files_seen = 0
-        for directory in rule.directories:
-            directory = directory.resolve()
-            if not directory.exists():
-                logger.warning("Retention rule '%s' directory does not exist: %s", rule.name, directory)
+        stage_map = self._build_directory_stage_map(rule)
+        for directory in self._expand_rule_directories(rule):
+            resolved_dir = directory.resolve()
+            base_stage = stage_map.get(resolved_dir, -1)
+            if not resolved_dir.exists():
+                logger.warning("Retention rule '%s' directory does not exist: %s", rule.name, resolved_dir)
                 continue
 
-            for file_path in self._iter_files(directory):
+            for file_path in self._iter_files(resolved_dir):
                 files_seen += 1
-                relative = file_path.relative_to(directory)
+                relative = file_path.relative_to(resolved_dir)
                 relative_str = posix_path(relative)
 
                 if not self._matches(relative_str, rule.include):
@@ -102,19 +113,90 @@ class RetentionManager:
 
                 age_seconds = (now - datetime.fromtimestamp(stat_result.st_mtime, tz=timezone.utc)).total_seconds()
 
-                for action in rule.actions:
-                    if age_seconds >= action.after_seconds:
-                        result = self._apply_action(
-                            rule=rule,
-                            action=action,
-                            file_path=file_path,
-                            relative=relative,
-                            size=stat_result.st_size,
-                        )
-                        if result:
-                            summary.record(result)
+                current_path = file_path
+                current_root = resolved_dir
+                current_stage = base_stage
+
+                for action_index, action in enumerate(rule.actions):
+                    if action.after_seconds > age_seconds:
                         break
+                    if action_index <= current_stage:
+                        continue
+
+                    try:
+                        relative = current_path.relative_to(current_root)
+                    except ValueError:
+                        logger.warning(
+                            "Skipping action '%s' for %s because path is outside root %s",
+                            action.type,
+                            current_path,
+                            current_root,
+                        )
+                        break
+
+                    execution = self._apply_action(
+                        rule=rule,
+                        action=action,
+                        file_path=current_path,
+                        relative=relative,
+                        size=stat_result.st_size,
+                        current_root=current_root,
+                    )
+                    if execution.result:
+                        summary.record(execution.result)
+
+                    if not execution.success:
+                        break
+
+                    if execution.deleted:
+                        break
+
+                    if execution.new_path is not None:
+                        current_path = execution.new_path
+                        if not self.dry_run:
+                            try:
+                                stat_result = current_path.stat()
+                            except FileNotFoundError:
+                                break
+
+                    if execution.new_root is not None:
+                        current_root = execution.new_root.resolve()
+
+                    current_stage = action_index
+
         return files_seen
+
+    def _expand_rule_directories(self, rule: RetentionRuleConfig) -> List[Path]:
+        """Include action targets so staged files continue to be processed."""
+        directories: List[Path] = []
+        seen: set[Path] = set()
+
+        for entry in rule.directories:
+            resolved = entry.resolve()
+            if resolved in seen:
+                continue
+            directories.append(entry)
+            seen.add(resolved)
+
+        for action in rule.actions:
+            if not action.target:
+                continue
+            resolved = action.target.resolve()
+            if resolved in seen:
+                continue
+            directories.append(action.target)
+            seen.add(resolved)
+
+        return directories
+
+    def _build_directory_stage_map(self, rule: RetentionRuleConfig) -> dict[Path, int]:
+        """Map action target directories to the index of the action that produced them."""
+        stage_map: dict[Path, int] = {}
+        for idx, action in enumerate(rule.actions):
+            if not action.target:
+                continue
+            stage_map[action.target.resolve()] = idx
+        return stage_map
 
     def _iter_files(self, directory: Path) -> Iterable[Path]:
         """Yield files under ``directory`` while tolerating concurrent deletions/moves."""
@@ -148,23 +230,41 @@ class RetentionManager:
         file_path: Path,
         relative: Path,
         size: int,
-    ) -> Optional[RetentionActionResult]:
+        current_root: Path,
+    ) -> ActionExecution:
         action_type = action.type.lower()
         if action_type in {"delete", "remove"}:
             return self._delete(rule, file_path, size)
         if action_type in {"move", "archive"}:
             if not action.target:
                 logger.error("Rule '%s' missing target for move action", rule.name)
-                return None
+                return ActionExecution(
+                    result=RetentionActionResult(
+                        rule=rule.name,
+                        action=action.type,
+                        path=file_path,
+                        detail="missing target for move",
+                    ),
+                    success=False,
+                )
             return self._move(rule, file_path, relative, action.target)
         if action_type in {"compress", "gzip"}:
-            return self._compress(rule, file_path, relative, action, size)
+            return self._compress(rule, file_path, relative, action, size, current_root)
 
         logger.error("Rule '%s' referenced unsupported action '%s'", rule.name, action.type)
-        return None
+        return ActionExecution(
+            result=RetentionActionResult(
+                rule=rule.name,
+                action=action.type,
+                path=file_path,
+                detail="unsupported action",
+            ),
+            success=False,
+        )
 
-    def _delete(self, rule: RetentionRuleConfig, file_path: Path, size: int) -> RetentionActionResult:
+    def _delete(self, rule: RetentionRuleConfig, file_path: Path, size: int) -> ActionExecution:
         detail = ""
+        success = True
         if self.dry_run:
             logger.info("[dry-run] Would delete %s (rule=%s)", file_path, rule.name)
         else:
@@ -173,14 +273,21 @@ class RetentionManager:
                 logger.info("Deleted %s (rule=%s)", file_path, rule.name)
             except FileNotFoundError:
                 detail = "file already removed"
+                success = False
             except Exception as exc:  # noqa: BLE001
                 logger.error("Failed to delete %s: %s", file_path, exc)
                 detail = f"error: {exc}"
-        return RetentionActionResult(rule=rule.name, action="delete", path=file_path, detail=detail, bytes_freed=size)
+                success = False
+        return ActionExecution(
+            result=RetentionActionResult(rule=rule.name, action="delete", path=file_path, detail=detail, bytes_freed=size),
+            deleted=True,
+            success=success,
+        )
 
-    def _move(self, rule: RetentionRuleConfig, file_path: Path, relative: Path, target_root: Path) -> RetentionActionResult:
+    def _move(self, rule: RetentionRuleConfig, file_path: Path, relative: Path, target_root: Path) -> ActionExecution:
         destination = target_root / relative
         detail = f"-> {destination}"
+        success = True
         if self.dry_run:
             logger.info("[dry-run] Would move %s to %s (rule=%s)", file_path, destination, rule.name)
         else:
@@ -196,7 +303,13 @@ class RetentionManager:
             except Exception as exc:  # noqa: BLE001
                 logger.error("Failed to move %s -> %s: %s", file_path, destination, exc)
                 detail = f"error: {exc}"
-        return RetentionActionResult(rule=rule.name, action="move", path=file_path, detail=detail)
+                success = False
+        return ActionExecution(
+            result=RetentionActionResult(rule=rule.name, action="move", path=file_path, detail=detail),
+            new_path=destination if success or self.dry_run else None,
+            new_root=target_root if success or self.dry_run else None,
+            success=success,
+        )
 
     def _cleanup_empty_directories(self, directory: Path, rule: RetentionRuleConfig) -> None:
         """Remove empty parent directories up to the rule's base directory."""
@@ -239,7 +352,8 @@ class RetentionManager:
         relative: Path,
         action: RetentionActionConfig,
         size: int,
-    ) -> RetentionActionResult:
+        current_root: Path,
+    ) -> ActionExecution:
         detail = ""
         target_root = action.target
 
@@ -252,17 +366,32 @@ class RetentionManager:
 
         if compression in {"gz", "gzip"}:
             destination = destination.with_suffix(destination.suffix + ".gz")
-            compress_result = self._compress_gzip(file_path, destination, rule, action)
+            compress_result, success = self._compress_gzip(file_path, destination, rule, action)
         elif compression in {"zstd", "zst"}:
             destination = destination.with_suffix(destination.suffix + ".zst")
-            compress_result = self._compress_zstd(file_path, destination, rule, action)
+            compress_result, success = self._compress_zstd(file_path, destination, rule, action)
         else:
             logger.error("Unsupported compression '%s' in rule '%s'", compression, rule.name)
-            return RetentionActionResult(rule=rule.name, action="compress", path=file_path, detail="unsupported compression")
+            return ActionExecution(
+                result=RetentionActionResult(rule=rule.name, action="compress", path=file_path, detail="unsupported compression"),
+                success=False,
+            )
 
         detail = compress_result or ""
         bytes_freed = 0 if action.keep_original else size
-        return RetentionActionResult(rule=rule.name, action="compress", path=file_path, detail=detail, bytes_freed=bytes_freed)
+        result = RetentionActionResult(rule=rule.name, action="compress", path=file_path, detail=detail, bytes_freed=bytes_freed)
+
+        if not success:
+            return ActionExecution(result=result, success=False)
+
+        new_root = target_root or current_root
+        new_path = None
+        if not action.keep_original:
+            new_path = destination
+        elif target_root:
+            new_path = destination
+
+        return ActionExecution(result=result, new_path=new_path, new_root=new_root if new_path else None)
 
     def _compress_gzip(
         self,
@@ -270,10 +399,10 @@ class RetentionManager:
         destination: Path,
         rule: RetentionRuleConfig,
         action: RetentionActionConfig,
-    ) -> Optional[str]:
+    ) -> tuple[Optional[str], bool]:
         if self.dry_run:
             logger.info("[dry-run] Would gzip %s -> %s (rule=%s)", source_path, destination, rule.name)
-            return None
+            return None, True
 
         try:
             ensure_directory(destination.parent)
@@ -284,8 +413,8 @@ class RetentionManager:
                 source_path.unlink()
         except Exception as exc:  # noqa: BLE001
             logger.error("Failed to compress %s -> %s: %s", source_path, destination, exc)
-            return f"error: {exc}"
-        return None
+            return (f"error: {exc}", False)
+        return (None, True)
 
     def _compress_zstd(
         self,
@@ -293,16 +422,16 @@ class RetentionManager:
         destination: Path,
         rule: RetentionRuleConfig,
         action: RetentionActionConfig,
-    ) -> Optional[str]:
+    ) -> tuple[Optional[str], bool]:
         if self.dry_run:
             logger.info("[dry-run] Would zstd %s -> %s (rule=%s)", source_path, destination, rule.name)
-            return None
+            return None, True
 
         try:
             import zstandard as zstd
         except ImportError:
             logger.error("Zstandard compression requested but 'zstandard' package is not installed")
-            return "missing zstandard dependency"
+            return ("missing zstandard dependency", False)
 
         try:
             ensure_directory(destination.parent)
@@ -315,5 +444,5 @@ class RetentionManager:
                 source_path.unlink()
         except Exception as exc:  # noqa: BLE001
             logger.error("Failed to zstd-compress %s -> %s: %s", source_path, destination, exc)
-            return f"error: {exc}"
-        return None
+            return (f"error: {exc}", False)
+        return (None, True)
