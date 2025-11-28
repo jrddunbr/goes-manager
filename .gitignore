@@ -1,2 +1,6 @@
 *.iml
 .idea/
+/config/health_monitor.test.json
+*.txt
+*.log
+*.tsv

@@ -21,6 +21,16 @@ Storage planning assumes the working dataset resides on a 1 TB SSD and that `f
 | **Indefinite** | No expiration | Admin messages, catalog metadata (`product.cbor` extracts), parsed EMWIN databases, curated event packages | Institutional knowledge, reproducibility. | Periodically verify checksums; optionally mirror to cloud/off-site backup. |
 | *(Optional)* **Staging (24 hours)** | Current day | Raw SatDump transport chunks prior to conversion | Buffer for ingest/processing. | Empty daily after successful ingest. |
 
+### Implemented Schedule (retention2.json)
+
+| Dataset group | Hot tier duration | Warm tier action | Seasonal action | Final disposition | Notes |
+| --- | ---: | --- | --- | --- | --- |
+| GOES imagery (Full Disk + Mesos) | 0–3 days in `IMAGES/*` | Move to `ARCHIVE/WARM/IMAGES` at day 3 | `zstd` to `ARCHIVE/SEASONAL/IMAGES` at day 10 (original removed) | Delete at day 21 | Keeps only 3 days hot, 7 days warm, 11 days compressed before purge. |
+| GOES false-color (Full Disk + Mesos, including `_map`/`.cbor`) | 0–1 days hot | Move to `ARCHIVE/WARM/IMAGES/false_color` at day 1 | `zstd` to `ARCHIVE/SEASONAL/IMAGES/false_color` at day 7 (original removed) | Delete at day 400 | Retains flagship false-color products for 13 months while minimizing hot-tier load. |
+| GOES Level-2 grids (`L2/*`) | 0–7 days hot | Move to `ARCHIVE/WARM/L2` at day 7 | `zstd` to `ARCHIVE/SEASONAL/L2` at day 30 (original removed) | Delete at day 90 | Limits L2 buildup while keeping a 3‑month history compressed. |
+| EMWIN graphics (`gif/jpg/png`) | 0–7 days hot | Move to `ARCHIVE/WARM/EMWIN/graphics` at day 7 | `zstd` to `ARCHIVE/SEASONAL/EMWIN/graphics` at day 21 (original removed) | Delete at day 90 | Graphics never stay online longer than three months. |
+| EMWIN bulletins (`txt/TXT`) | 0–7 days hot | `zstd` to `ARCHIVE/WARM/EMWIN/text` at day 7 (original removed) | Move bundles to `ARCHIVE/SEASONAL/EMWIN/text` at day 60 | Delete at day 180 | Six months of compressed bulletins kept; parsed data goes to the Indefinite store per policy. |
+
 ## Dataset-to-Class Mapping
 - **GOES-19 imagery (production)**
   - Raw mesoscale quicklooks: Hot ➜ Warm (retain 1-min cadence for 7 days, thin to 5-min cadence for 30 days, hourlies for Seasonal).

@@ -4,21 +4,69 @@
     "interval_seconds": 3600,
     "rules": [
       {
-        "name": "Mesoscale imagery retention",
-        "directories": ["IMAGES"],
-        "include": ["**/*.png", "**/*.cbor"],
-        "exclude": ["**/_thumbnails/**"],
+        "name": "GOES imagery (Full + Mesos)",
+        "directories": [
+          "IMAGES/GOES-19",
+          "IMAGES/GOES-18",
+          "IMAGES/GOES-16"
+        ],
+        "include": [
+          "**/*.png",
+          "**/*.jpg",
+          "**/*.gif",
+          "**/*.cbor"
+        ],
+        "exclude": [
+          "**/_thumbnails/**",
+          "**/*ABI_False_Color*.png",
+          "**/*ABI_False_Color*.jpg",
+          "**/*ABI_False_Color*.gif",
+          "**/*ABI_False_Color*.cbor"
+        ],
         "actions": [
           {
-            "after": "7d",
+            "after": "3d",
             "type": "move",
             "target": "ARCHIVE/WARM/IMAGES"
           },
           {
-            "after": "90d",
+            "after": "10d",
             "type": "compress",
             "target": "ARCHIVE/SEASONAL/IMAGES",
-            "compression": "zstd"
+            "compression": "zstd",
+            "keep_original": false
+          },
+          {
+            "after": "21d",
+            "type": "delete"
+          }
+        ]
+      },
+      {
+        "name": "GOES false-color archive",
+        "directories": [
+          "IMAGES/GOES-19",
+          "IMAGES/GOES-18",
+          "IMAGES/GOES-16"
+        ],
+        "include": [
+          "**/*ABI_False_Color*.png",
+          "**/*ABI_False_Color*.jpg",
+          "**/*ABI_False_Color*.gif",
+          "**/*ABI_False_Color*.cbor"
+        ],
+        "actions": [
+          {
+            "after": "1d",
+            "type": "move",
+            "target": "ARCHIVE/WARM/IMAGES/false_color"
+          },
+          {
+            "after": "7d",
+            "type": "compress",
+            "target": "ARCHIVE/SEASONAL/IMAGES/false_color",
+            "compression": "zstd",
+            "keep_original": false
           },
           {
             "after": "400d",
@@ -27,18 +75,91 @@
         ]
       },
       {
-        "name": "EMWIN bulletins",
-        "directories": ["EMWIN"],
-        "include": ["**/*.txt"],
+        "name": "GOES Level-2 grids",
+        "directories": [
+          "L2"
+        ],
+        "include": [
+          "**/*.png",
+          "**/*.tif",
+          "**/*.nc",
+          "**/*.cbor"
+        ],
         "actions": [
+          {
+            "after": "7d",
+            "type": "move",
+            "target": "ARCHIVE/WARM/L2"
+          },
           {
             "after": "30d",
             "type": "compress",
-            "target": "ARCHIVE/EMWIN",
-            "compression": "zstd"
+            "target": "ARCHIVE/SEASONAL/L2",
+            "compression": "zstd",
+            "keep_original": false
           },
           {
-            "after": "400d",
+            "after": "90d",
+            "type": "delete"
+          }
+        ]
+      },
+      {
+        "name": "EMWIN graphics",
+        "directories": [
+          "EMWIN"
+        ],
+        "include": [
+          "**/*.gif",
+          "**/*.jpg",
+          "**/*.png"
+        ],
+        "exclude": [
+          "**/text/**"
+        ],
+        "actions": [
+          {
+            "after": "7d",
+            "type": "move",
+            "target": "ARCHIVE/WARM/EMWIN/graphics"
+          },
+          {
+            "after": "21d",
+            "type": "compress",
+            "target": "ARCHIVE/SEASONAL/EMWIN/graphics",
+            "compression": "zstd",
+            "keep_original": false
+          },
+          {
+            "after": "90d",
+            "type": "delete"
+          }
+        ]
+      },
+      {
+        "name": "EMWIN bulletins",
+        "directories": [
+          "EMWIN"
+        ],
+        "include": [
+          "**/*.txt",
+          "**/*.TXT"
+        ],
+        "actions": [
+          {
+            "after": "7d",
+            "type": "compress",
+            "target": "ARCHIVE/WARM/EMWIN/text",
+            "compression": "zstd",
+            "keep_original": false
+          },
+          {
+            "after": "60d",
+            "type": "move",
+            "target": "ARCHIVE/SEASONAL/EMWIN/text"
+          },
+          {
+            "after": "180d",
             "type": "delete"
           }
         ]
