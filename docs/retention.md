@@ -1,15 +1,6 @@
 # Retention Strategy
 
-Storage planning assumes the working dataset resides on a 1 TB SSD and that `files.txt` represents a single SatDump snapshot (actual byte sizes should be confirmed with a fresh crawl). Retention classes below balance rapid dashboard access with long-term reference needs.
-
-### Current Footprint (from `goes_file_sizes.txt`)
-| Area | Approx size |
-| --- | ---: |
-| `satellite_raw/IMAGES` | 72.84 GiB (legacy GOES-16 Full Disk ≈47 GiB, GOES-19 Full Disk ≈19.6 GiB) |
-| `satellite_raw/L2` | 6.61 GiB |
-| `satellite_raw/EMWIN` | 0.50 GiB |
-| `satellite_raw/Admin Messages` | <1 MiB |
-| `satellite_raw/.composite_cache_do_not_delete.json` | <1 MiB |
+Storage planning assumes the working dataset resides on a 1 TB SSD.
 
 ## Retention Classes
 | Class | Target span | Typical media | Purpose | Actions at rollover |
