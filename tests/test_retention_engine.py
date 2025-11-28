@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import time
 from pathlib import Path
 
@@ -80,3 +81,16 @@ def test_retention_resumes_from_intermediate_target(tmp_path) -> None:
     compressed = roots["seasonal"] / "Mesoscale" / "sample.png.gz"
     assert compressed.exists(), "engine should continue processing files already in the warm tier"
     assert not warm_file.exists(), "warm tier source should be removed after compression"
+
+
+def test_missing_action_directories_are_created(tmp_path) -> None:
+    manager, roots = build_manager(tmp_path)
+    # Remove any pre-existing action targets to simulate a fresh system
+    for path in (roots["warm"], roots["seasonal"]):
+        if path.exists():
+            shutil.rmtree(path)
+
+    manager.run_once()
+
+    assert roots["warm"].exists(), "retention should create warm target directories automatically"
+    assert roots["seasonal"].exists(), "retention should create seasonal target directories automatically"

@@ -88,12 +88,29 @@ class RetentionManager:
     def _process_rule(self, rule: RetentionRuleConfig, now: datetime, summary: RetentionSummary) -> int:
         files_seen = 0
         stage_map = self._build_directory_stage_map(rule)
+        base_directories = {path.resolve() for path in rule.directories}
         for directory in self._expand_rule_directories(rule):
             resolved_dir = directory.resolve()
             base_stage = stage_map.get(resolved_dir, -1)
             if not resolved_dir.exists():
-                logger.warning("Retention rule '%s' directory does not exist: %s", rule.name, resolved_dir)
-                continue
+                if resolved_dir in base_directories:
+                    logger.warning("Retention rule '%s' directory does not exist: %s", rule.name, resolved_dir)
+                    continue
+                try:
+                    ensure_directory(resolved_dir)
+                    logger.info(
+                        "Created missing action target directory for rule '%s': %s",
+                        rule.name,
+                        resolved_dir,
+                    )
+                except OSError as exc:
+                    logger.warning(
+                        "Unable to create target directory %s for rule '%s': %s",
+                        resolved_dir,
+                        rule.name,
+                        exc,
+                    )
+                    continue
 
             for file_path in self._iter_files(resolved_dir):
                 files_seen += 1
