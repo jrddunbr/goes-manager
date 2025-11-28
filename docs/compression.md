@@ -10,7 +10,8 @@ All sizes below are totals per product family and expressed in GiB.
 
 | Product | Files | Original (GiB) | Compressed (GiB) | Ratio | Savings |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `product` | 4 370 | 0.032 | 0.021 | 0.6436 | 35.64 % |
+| `EMWIN bulletins` | 466 193 | 3.703 | 0.638 | 0.1723 | 82.77 % |
+| `product` | 4 378 | 0.032 | 0.021 | 0.6436 | 35.64 % |
 | `abi_rgb_Upper-Level_Tropospheric_Water_Vapor_map` | 275 | 1.834 | 1.819 | 0.9919 | 0.81 % |
 | `abi_rgb_Upper-Level_Tropospheric_Water_Vapor` | 274 | 1.799 | 1.789 | 0.9947 | 0.53 % |
 | `abi_rgb_Mid-level_Tropospheric_Water_Vapor_map` | 275 | 2.137 | 2.127 | 0.9954 | 0.46 % |
@@ -46,10 +47,10 @@ All sizes below are totals per product family and expressed in GiB.
 | `abi_rgb_Rain_Rate_Per_Quarter_Hour` | 563 | 0.213 | N/A | N/A | N/A |
 | `abi_rgb_Total_Precipitable_Water` | 463 | 0.128 | N/A | N/A | N/A |
 
-**Totals (measured imagery only):** 62.69 GiB of source data shrank to 62.54 GiB once compressed, a net ratio of 0.9976 (≈0.24 % or ~150 MiB saved). The additional rows above represent uncompressed categories slated for future measurement.
+**Totals (current compressed set):** 66.40 GiB of source data (including the newly processed EMWIN bulletins) shrank to 63.18 GiB, a net ratio of 0.9516 (≈3.22 GiB saved). The rows marked `N/A` are still waiting on `.zst` outputs; this crawl was captured mid-run, so expect these numbers to grow.
 
 ## Observations
 
-- Only the compact `product.cbor` manifests gain a meaningful benefit (~36 % reduction). Every other product in the seasonal tree remains a PNG/JPG/GIF asset and already arrives compressed, so Zstandard trims at most 0.8 % per family and, in the case of `G18_13`, still bloats slightly.
-- Channel/band imagery (`G19_*`, RGB composites, etc.) accounts for essentially all of the seasonal footprint and yields just ~150 MiB reclaimed across the 62.7 GiB analyzed here. The computational cost of recompressing them is rarely justified on constrained hardware.
-- Level-2 grids (`G19_ACHT`, `G19_RRQPE`, etc.), EMWIN bulletins/graphics, and NWS LRIT charts now appear in the table with `N/A` placeholders—they make up several additional gigabytes but have not yet reached the compression stage, so future runs should revisit them once `.zst` outputs exist.
+- EMWIN bulletins finally hit their day‑7 compression stage: 466 k files (3.7 GiB) collapsed to 0.64 GiB, an 82 % reduction. The run is still in progress, so expect the totals to rise as more bulletins age into `ARCHIVE/WARM/EMWIN/text`.
+- Outside of `product.cbor` manifests, imagery families (`G19_*`, RGB composites, etc.) still gain under 1 % because they were already stored as PNG/JPG. That’s why even after adding EMWIN results the combined imagery savings remain only ~150 MiB.
+- EMWIN graphics, NWS LRIT charts, and Level‑2 grids beyond the ones listed have yet to produce compressed artifacts; they remain on the watch list with `N/A` placeholders until a completed retention cycle generates their `.zst` counterparts.
