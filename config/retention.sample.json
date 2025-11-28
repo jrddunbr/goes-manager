@@ -13,8 +13,7 @@
         "include": [
           "**/*.png",
           "**/*.jpg",
-          "**/*.gif",
-          "**/*.cbor"
+          "**/*.gif"
         ],
         "exclude": [
           "**/_thumbnails/**",
@@ -31,13 +30,40 @@
           },
           {
             "after": "10d",
+            "type": "move",
+            "target": "ARCHIVE/SEASONAL/IMAGES"
+          },
+          {
+            "after": "21d",
+            "type": "delete"
+          }
+        ]
+      },
+      {
+        "name": "GOES imagery metadata",
+        "directories": [
+          "IMAGES/GOES-19",
+          "IMAGES/GOES-18",
+          "IMAGES/GOES-16"
+        ],
+        "include": [
+          "**/product.cbor"
+        ],
+        "actions": [
+          {
+            "after": "3d",
+            "type": "move",
+            "target": "ARCHIVE/WARM/IMAGES"
+          },
+          {
+            "after": "10d",
             "type": "compress",
             "target": "ARCHIVE/SEASONAL/IMAGES",
             "compression": "zstd",
             "keep_original": false
           },
           {
-            "after": "21d",
+            "after": "400d",
             "type": "delete"
           }
         ]
@@ -63,10 +89,8 @@
           },
           {
             "after": "7d",
-            "type": "compress",
-            "target": "ARCHIVE/SEASONAL/IMAGES/false_color",
-            "compression": "zstd",
-            "keep_original": false
+            "type": "move",
+            "target": "ARCHIVE/SEASONAL/IMAGES/false_color"
           },
           {
             "after": "400d",
@@ -125,10 +149,8 @@
           },
           {
             "after": "21d",
-            "type": "compress",
-            "target": "ARCHIVE/SEASONAL/EMWIN/graphics",
-            "compression": "zstd",
-            "keep_original": false
+            "type": "move",
+            "target": "ARCHIVE/SEASONAL/EMWIN/graphics"
           },
           {
             "after": "90d",
