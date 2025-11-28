@@ -1,13 +1,13 @@
 # Storage Utilisation & Accrual Snapshot
 
-`current_usage.tsv` (47 MiB, generated via `find … -printf …`) now provides per-file sizes and UTC timestamps for everything under `/var/satellite/satellite_raw`, excluding the unreliable `/ARCHIVE` tree. `df -h` still reports `/var/satellite` at **242 G used / 629 G free / 916 G total**.
+`current_usage.tsv` (Nov 14 snapshot, 47 MiB) and `current_usage2.tsv` (Nov 27 snapshot, 63 MiB) provided per-file sizes for everything under `/var/satellite/satellite_raw` but excluded `/ARCHIVE`. The new crawl `current_usage3.tsv` (Nov 27, 87 MiB) uses the updated `find` command and now includes `/ARCHIVE/WARM`. Pair it with the latest `df -h` (`/dev/sda1` 1 TB disk mounted at `/var/satellite`) which reports **440 GiB used / 429 GiB free / 916 GiB total** as of the same day.
 
 ## Data Capture Command
 
-Retain this crawl for future runs (it ignores `/ARCHIVE` while emitting bytes + UTC timestamps for every other file):
+Re-run this crawl at least daily. For the next TSV capture we must include `/ARCHIVE` so that WARM/SEASONAL payloads are tracked alongside the hot tier:
 
 ```bash
-sudo find /var/satellite/satellite_raw -path '/var/satellite/satellite_raw/ARCHIVE' -prune -o -type f -printf '%s\t%TY-%Tm-%Td\t%TH:%TM:%TS\t%p\n' | sort -k2,2 -k3,3 > /var/satellite/current_usage.tsv
+sudo find /var/satellite/satellite_raw -type f -printf '%s\t%TY-%Tm-%Td\t%TH:%TM:%TS\t%p\n' | sort -k2,2 -k3,3 > /var/satellite/current_usage.tsv
 ```
 
 ## Data-Type Run Rates (excl. `/ARCHIVE`)
@@ -84,16 +84,55 @@ Top EMWIN graphic products (identified by NOAA mnemonic at the tail of each file
 | RGB Clean Longwave IR Window Band / `_map` | 0.43 | 0.03 | 0.05 | Thermal rendering of the same frames. |
 | Other mesos RGBs | 0.00+ | <0.01 | <0.01 | Present but negligible in this capture. |
 
-Combined GOES-19 production load (Full Disk imagery + Mesoscale imagery + Level-2 grids) averages **~9 GB/day** over the most recent 15-day window (Oct 31–Nov 14) with spikes to **14.2 GB/day**. At that cadence, the current **629 GB free** window would be exhausted in roughly **70 days** without thinning or offloading, even before accounting for GOES-18 or EMWIN additions. Across the entire TSV, the catalogued (non-archive) content sums to **≈149 GiB**, leaving ~93 GiB of the `df`-reported usage attributable to `/ARCHIVE`, staging, or assets outside `/var/satellite/satellite_raw`.
+Combined GOES-19 production load (Full Disk imagery + Mesoscale imagery + Level-2 grids) has now stabilized near **14–15 GB/day**. The refreshed crawl `current_usage2.tsv` (captured 2025‑11‑27) inventories **≈347 GiB** of non-archive content spanning 53 ingest days (up from ≈149 GiB/40 days in the prior TSV). Daily production from 2025‑11‑05 onward rarely drops below 14 GB/day, with a recent peak of **14.96 GB/day**. With `/ARCHIVE` now included (`current_usage3.tsv`), the enumerated footprint rises to **≈416.6 GiB**: about **300 GiB** in hot `IMAGES`, **34.6 GiB** in `L2`, **12.5 GiB** in `EMWIN`, and **69.5 GiB** already tucked under `ARCHIVE/WARM/IMAGES`. This TSV sum still trails the filesystem usage from `df -h` (440 GiB), implying ~23 GiB of staging/temp data or directories not traversed.
+
+### Inventory Snapshot (Nov 27 w/Archive)
+
+| Tree | Size (GiB) | Share of TSV | Notes |
+| --- | ---: | ---: | --- |
+| `IMAGES/*` | 300.07 | 72 % | Active GOES-19/18 PNGs plus EMWIN graphics; largest growth vector. |
+| `ARCHIVE/WARM/IMAGES/*` | 69.52 | 16.7 % | Only GOES imagery is landing in WARM; no Level-2/EMWIN payloads yet. |
+| `L2/*` | 34.57 | 8.3 % | Mostly GOES-19 Level-2 grids plus legacy GOES-16 captures. |
+| `EMWIN/*` | 12.46 | 3.0 % | Mix of graphics and bulletin text. |
+| *Other (Admin, caches)* | <0.01 | <0.1 % | Negligible footprint. |
+
+### Storage Exhaustion Forecast (Nov 27 snapshot, 429 GiB free)
+
+| Rate scenario | Basis (Oct 29 → Nov 27) | GiB/day | Days until full (429 GiB free) | Projected run-out (UTC) |
+| --- | --- | ---: | ---: | --- |
+| Trailing 30-day mean | Includes Oct 29–Nov 04 lull | 11.34 | 37.8 | 2026-01-03 |
+| Steady-state mean | Mean of Nov 05–Nov 27 days | 14.10 | 30.4 | 2025-12-27 |
+| Median day | 50th percentile of steady window | 14.57 | 29.4 | 2025-12-26 |
+| 75th percentile | Typical “busy but normal” day | 14.69 | 29.2 | 2025-12-26 |
+| 90th percentile | High-load day that occurs weekly | 14.75 | 29.1 | 2025-12-26 |
+| Peak observed | Max day in Nov 05–Nov 27 window | 14.96 | 28.7 | 2025-12-25 |
+
+Even under the most optimistic (30-day average) model, `/var/satellite` runs out of room right after New Year’s. Using the more realistic steady-state behavior, exhaustion lands between **25–27 Dec 2025**, leaving ~30 days to implement offload/down-sampling.
+
+### Archive Validation (Nov 27 snapshot)
+
+With `current_usage3.tsv` we can now see `/ARCHIVE/WARM` content. The crawl shows **69.5 GiB** of GOES imagery already housed under `ARCHIVE/WARM/IMAGES/*` (mostly February–August GOES-16 Full Disk scenes), proving the warm-tier tree exists and is reachable via the standard path. No other archive tiers (e.g., `ARCHIVE/WARM/L2` or `ARCHIVE/SEASONAL/*`) were observed, so Level-2 grids and EMWIN bulletins are still sitting entirely in the hot tree.
+
+| Hot-tier bucket | Oldest timestamp still outside `/ARCHIVE` | Data older than 90 d still online | Notes |
+| --- | --- | ---: | --- |
+| `L2/*` | 2025-02-21 | 6.40 GiB | Legacy GOES-16 Level-2 grids never moved to Archive/Seasonal. |
+| `IMAGES/*` | 2025-02-21 | 0.10 GiB | A handful of Feb LRIT frames remain unarchived. |
+| `EMWIN/*` | 2025-05-27 | 0.38 GiB | Backlog of EMWIN text products predating Aug 29. |
+
+That `>90 d` residue totals **≈6.9 GiB** and confirms the archival move/compress step has not swept L2 or EMWIN trees for months. Because only GOES imagery appears in `ARCHIVE/WARM`, the retention workflow likely filters on directory names and needs additional rules for Level-2 and EMWIN content. Capture a retention-manager dry-run log plus the next TSV after the fix to prove those directories start migrating. Recent systemd logs show why this has been so flaky: the service first crash-looped (~95 k restarts) because it could not read `/var/satellite/state`, and even after fixing that permission the process now dies mid-run once it deletes the directory it is still iterating (see the FileNotFoundError issued while walking `/IMAGES/GOES-19/Full Disk/2025-11-13_04-00-20`). The engine needs to tolerate directories disappearing during traversal (e.g., refresh the iterator on `FileNotFoundError` or walk files via `os.walk` with `topdown=False`).
 
 ## Observations
+- GOES production has settled into a sustained 14–15 GB/day pace; with only 429 GiB free on `/var/satellite`, that leaves roughly one month before the disk fills unless data is thinned or relocated.
+- `/ARCHIVE/WARM` contains ~70 GiB of imagery, showing that part of the archive tree is reachable, but Level-2 and EMWIN content never move—retention rules need to be expanded beyond GOES imagery.
+- `goes-retention.service` still exits non-zero: it now moves some GOES-19 directories before crashing when `Path.rglob` touches a directory that was just migrated/deleted; the iterator must be hardened so it skips missing directories instead of killing the run.
 - GOES-19 Full Disk scans dwarf every other stream; retention policies must prioritize thinning that directory first (e.g., reduce to 6‑hour cadence once data ages beyond Warm tier).
 - Mesoscale sectors add a steady ~0.6 GB/day; if both sectors remain pinned 24/7, consider gating Mesoscale retention to mission-critical hours.
 - Level-2 products are relatively light (~0.6 GB/day each for GOES-19/16), but they extend farther back in time than recent imagery; ensure the archive job keeps only the metrics required for reanalysis.
 - EMWIN and NWS combined continue to contribute <0.3 GB/day, so their footprint is not a storage risk.
-- Data coverage is uneven: GOES-16 Level-2 entries stop on 2025‑03‑07 and the GOES-19 imagery set only spans the most recent 15 days. Future analyses should confirm that the TSV capture runs daily so moving averages stay accurate.
+- Data coverage remains uneven: GOES-16 Level-2 entries still stop on 2025‑03‑07, while GOES-19 imagery now spans 53 ingest days but depends on the daily TSV crawl continuing without gaps. Keep validating that capture so percentile trends stay trustworthy.
 
 ## Next Steps
-1. Schedule the `find … -printf … > current_usage.tsv` crawl (or equivalent) daily and diff successive runs to catch sudden growth.
+1. Schedule the updated `find … -printf … > current_usage.tsv` crawl (now including `/ARCHIVE`) daily and diff successive runs to catch sudden growth.
 2. Feed the GOES-19 run rates into the jobs outlined in `docs/retention.md` (e.g., purge or downsample Full Disk frames after 30 days, keep only hourly mesos beyond the Hot tier).
-3. Break out the remaining 93 GiB (difference between the TSV tally and `df`) to confirm how much sits in `/ARCHIVE` vs. staging; extend the crawl scope cautiously if those areas need auditing.
+3. Reconcile the 23 GiB gap between the TSV tally (~416.6 GiB) and the `df` usage (440 GiB) so `/ARCHIVE`, staging, and mount metadata are all being measured consistently.
+4. Fix `goes-retention.service` (restore read/write access to `/var/satellite/state`, then guard its directory walk against deletions) and run it in dry-run followed by a live pass to migrate the February GOES-16 Level-2 grids plus EMWIN backlog into `/ARCHIVE`; capture logs plus the next TSV to prove the archive pipeline is active.

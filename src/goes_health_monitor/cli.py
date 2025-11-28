@@ -5,7 +5,7 @@ import argparse
 import asyncio
 import logging
 import sys
-from typing import Iterable, Optional
+from typing import Iterable, Optional, List
 
 from goes_manager.config import AppConfig, load_health_app_config
 
@@ -57,7 +57,29 @@ def health_main(argv: Optional[Iterable[str]] = None) -> int:
 
     if args.once:
         snapshot = monitor.run_once()
-        logging.info("Health snapshot: status=%s issues=%s", snapshot.status, "; ".join(snapshot.issues))
+        component_lines = []
+        for name in sorted(snapshot.components.keys()):
+            component = snapshot.components[name]
+            comp_status = component.get("status", "unknown")
+            issues = component.get("issues") or []
+            messages = component.get("messages") or []
+
+            details: List[str] = []
+            if issues:
+                details.append("issues=" + "; ".join(str(item) for item in issues))
+            if messages:
+                details.append("info=" + "; ".join(str(item) for item in messages))
+
+            line = f"  - {name}: {comp_status.upper()}"
+            if details:
+                line += f" ({' | '.join(details)})"
+            component_lines.append(line)
+
+        logging.info("Health snapshot overall status=%s", snapshot.status.upper())
+        if snapshot.issues:
+            logging.info("Notable issues: %s", "; ".join(snapshot.issues))
+        if component_lines:
+            logging.info("Component statuses:\n%s", "\n".join(component_lines))
         return 0
 
     interval = args.interval or app_config.health.interval_seconds

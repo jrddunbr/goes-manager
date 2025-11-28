@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import gzip
 import logging
+import os
 import shutil
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -116,9 +117,25 @@ class RetentionManager:
         return files_seen
 
     def _iter_files(self, directory: Path) -> Iterable[Path]:
-        for item in directory.rglob("*"):
-            if item.is_file():
-                yield item
+        """Yield files under ``directory`` while tolerating concurrent deletions/moves."""
+        stack = [directory]
+        while stack:
+            current = stack.pop()
+            try:
+                with os.scandir(current) as entries:
+                    for entry in entries:
+                        try:
+                            if entry.is_dir(follow_symlinks=False):
+                                stack.append(Path(entry.path))
+                                continue
+                            if entry.is_file(follow_symlinks=False):
+                                yield Path(entry.path)
+                        except FileNotFoundError:
+                            # Entry vanished between scandir and metadata check; skip it.
+                            continue
+            except FileNotFoundError:
+                # Directory was removed after being queued; nothing left to scan.
+                continue
 
     @staticmethod
     def _matches(path: str, patterns: Iterable[str]) -> bool:

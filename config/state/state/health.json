@@ -1,0 +1,159 @@
+{
+  "components": {
+    "satdump_api": {
+      "issues": [],
+      "messages": [
+        "Demod SNR 2.83 dB (warning < 2.00, error < 1.00) -> OK",
+        "Demod peak SNR 4.38 dB (warning < 3.00, error < 2.00) -> OK",
+        "Demod tuned frequency 484.183 MHz",
+        "Decoder deframer locked",
+        "Decoder viterbi locked",
+        "Viterbi BER 0.0500 (warning > 0.120, error > 0.200) -> OK",
+        "Reed-Solomon average 0.0"
+      ],
+      "status": "ok"
+    },
+    "satdump_journal": {
+      "issues": [
+        "Journald reader unavailable"
+      ],
+      "messages": [
+        "SatDump journal messages observed: 0"
+      ],
+      "status": "error"
+    },
+    "storage": {
+      "issues": [
+        "Storage /var/satellite missing",
+        "Storage /var/satellite/satellite_raw missing"
+      ],
+      "messages": [
+        "/home/jared/Projects/GoesManager/config: ok",
+        "/var/satellite: error (missing)",
+        "/var/satellite/satellite_raw: error (missing)"
+      ],
+      "status": "error"
+    },
+    "systemd_unit": {
+      "issues": [
+        "SatDump systemd unit inactive (active=inactive, sub=dead, result=success)"
+      ],
+      "messages": [
+        "systemd active=inactive sub=dead"
+      ],
+      "status": "error"
+    }
+  },
+  "generated_at": "2025-11-04T01:53:17.390477+00:00",
+  "issues": [
+    "Journald reader unavailable",
+    "SatDump systemd unit inactive (active=inactive, sub=dead, result=success)",
+    "Storage /var/satellite missing",
+    "Storage /var/satellite/satellite_raw missing"
+  ],
+  "satdump": {
+    "last_error_time": null,
+    "last_message_time": null,
+    "last_warning_time": null,
+    "recent_errors": [],
+    "recent_messages": [],
+    "service": {
+      "activestate": "inactive",
+      "checked_at": "2025-11-04T01:53:17.390477+00:00",
+      "issues": [
+        "SatDump systemd unit inactive (active=inactive, sub=dead, result=success)"
+      ],
+      "result": "success",
+      "severity": "error",
+      "substate": "dead",
+      "unit": "satdump.service"
+    },
+    "total_errors": 0,
+    "total_messages": 0,
+    "total_warnings": 0
+  },
+  "satdump_api": {
+    "analysis": {
+      "evaluated_at": "2025-11-04T01:53:17.390477+00:00",
+      "issues": [],
+      "messages": [
+        "Demod SNR 2.83 dB (warning < 2.00, error < 1.00) -> OK",
+        "Demod peak SNR 4.38 dB (warning < 3.00, error < 2.00) -> OK",
+        "Demod tuned frequency 484.183 MHz",
+        "Decoder deframer locked",
+        "Decoder viterbi locked",
+        "Viterbi BER 0.0500 (warning > 0.120, error > 0.200) -> OK",
+        "Reed-Solomon average 0.0"
+      ],
+      "metrics": {
+        "decoder": {
+          "deframer_lock": true,
+          "rs_avg": 0.0,
+          "severity": "ok",
+          "viterbi_ber": 0.050048828125,
+          "viterbi_lock": true
+        },
+        "demod": {
+          "frequency": 484.183349609375,
+          "peak_snr": 4.383565425872803,
+          "severity": "ok",
+          "snr": 2.8338820934295654
+        }
+      },
+      "severity": "ok"
+    },
+    "data": {
+      "ccsds_conv_concat_decoder": {
+        "deframer_lock": true,
+        "rs_avg": 0,
+        "viterbi_ber": 0.050048828125,
+        "viterbi_lock": 1
+      },
+      "psk_demod": {
+        "freq": 484.183349609375,
+        "peak_snr": 4.383565425872803,
+        "snr": 2.8338820934295654
+      }
+    },
+    "status": "ok"
+  },
+  "status": "error",
+  "storage": {
+    "paths": [
+      {
+        "checked_at": "2025-11-04T01:53:17.390477+00:00",
+        "device": 72,
+        "exists": true,
+        "is_mount": false,
+        "path": "/home/jared/Projects/GoesManager/config",
+        "readable": true,
+        "severity": "ok",
+        "writable": true
+      },
+      {
+        "checked_at": "2025-11-04T01:53:17.390477+00:00",
+        "detail": "missing",
+        "exists": false,
+        "is_mount": false,
+        "path": "/var/satellite",
+        "readable": false,
+        "severity": "error",
+        "writable": false
+      },
+      {
+        "checked_at": "2025-11-04T01:53:17.390477+00:00",
+        "detail": "missing",
+        "exists": false,
+        "is_mount": false,
+        "path": "/var/satellite/satellite_raw",
+        "readable": false,
+        "severity": "error",
+        "writable": false
+      }
+    ],
+    "state_file": {
+      "active": "/home/jared/Projects/GoesManager/config/state/state/health.json",
+      "primary": "/home/jared/Projects/GoesManager/config/state/state/health.json"
+    }
+  }
+}

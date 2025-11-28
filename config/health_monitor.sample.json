@@ -20,10 +20,23 @@
         "degraded"
       ]
     },
+    "storage_mounts": [
+      "/var/satellite"
+    ],
     "satdump_api": {
       "base_url": "http://localhost:8000",
       "status_endpoint": "/api",
-      "timeout_seconds": 5.0
+      "timeout_seconds": 5.0,
+      "thresholds": {
+        "min_snr_warning": 2.0,
+        "min_snr_error": 1.0,
+        "min_peak_snr_warning": 3.0,
+        "min_peak_snr_error": 2.0,
+        "max_viterbi_ber_warning": 0.12,
+        "max_viterbi_ber_error": 0.2,
+        "require_deframer_lock": true,
+        "require_viterbi_lock": true
+      }
     },
     "alert": {
       "webhook_url": "https://discord.com/api/webhooks/REPLACE/ME",

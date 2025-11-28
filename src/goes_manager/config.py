@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from .util import ensure_directory, parse_duration_to_seconds, resolve_path
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -66,6 +69,18 @@ class SatdumpApiConfig:
 
 
 @dataclass
+class SatdumpSignalThresholds:
+    min_snr_warning: float = 2.0
+    min_snr_error: float = 1.0
+    min_peak_snr_warning: float = 3.0
+    min_peak_snr_error: float = 2.0
+    max_viterbi_ber_warning: float = 0.12
+    max_viterbi_ber_error: float = 0.2
+    require_deframer_lock: bool = True
+    require_viterbi_lock: bool = True
+
+
+@dataclass
 class HealthConfig:
     enabled: bool = True
     interval_seconds: int = 60
@@ -79,6 +94,8 @@ class HealthConfig:
     )
     warning_keywords: List[str] = field(default_factory=lambda: ["warning", "degraded", "retry"])
     satdump_api: Optional[SatdumpApiConfig] = None
+    signal_thresholds: SatdumpSignalThresholds = field(default_factory=SatdumpSignalThresholds)
+    storage_mounts: List[Path] = field(default_factory=list)
     alert: Optional[HealthAlertConfig] = None
 
 
@@ -100,6 +117,21 @@ def _ensure_list(value, default):
     if isinstance(value, list):
         return value
     return [value]
+
+
+def _coerce_bool(value, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"1", "true", "yes", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "off"}:
+            return False
+        return default
+    return bool(value)
 
 
 def _load_retention_config(data: dict, data_root: Path) -> RetentionConfig:
@@ -244,6 +276,23 @@ def _load_health_config(data: dict, state_dir: Path) -> HealthConfig:
             timeout_seconds=timeout_seconds,
         )
 
+    threshold_data = data.get("satdump_thresholds") or (api_data.get("thresholds") if api_data else None) or {}
+    thresholds = SatdumpSignalThresholds(
+        min_snr_warning=float(threshold_data.get("min_snr_warning", 2.0)),
+        min_snr_error=float(threshold_data.get("min_snr_error", 1.0)),
+        min_peak_snr_warning=float(threshold_data.get("min_peak_snr_warning", 3.0)),
+        min_peak_snr_error=float(threshold_data.get("min_peak_snr_error", 2.0)),
+        max_viterbi_ber_warning=float(threshold_data.get("max_viterbi_ber_warning", 0.12)),
+        max_viterbi_ber_error=float(threshold_data.get("max_viterbi_ber_error", 0.2)),
+        require_deframer_lock=_coerce_bool(threshold_data.get("require_deframer_lock"), True),
+        require_viterbi_lock=_coerce_bool(threshold_data.get("require_viterbi_lock"), True),
+    )
+
+    storage_mounts_raw = data.get("storage_mounts") or data.get("mounts") or []
+    storage_mounts: List[Path] = []
+    for entry in _ensure_list(storage_mounts_raw, []):
+        storage_mounts.append(resolve_path(state_dir, entry))
+
     alert_cfg = None
     alert_data = data.get("alert") or data.get("alerts")
     if alert_data and alert_data.get("webhook_url"):
@@ -265,6 +314,8 @@ def _load_health_config(data: dict, state_dir: Path) -> HealthConfig:
         error_keywords=[str(item).lower() for item in error_keywords],
         warning_keywords=[str(item).lower() for item in warning_keywords],
         satdump_api=api_cfg,
+        signal_thresholds=thresholds,
+        storage_mounts=storage_mounts,
         alert=alert_cfg,
     )
 
@@ -275,7 +326,21 @@ def _build_app_config(payload: Dict, *, base_dir: Path, config_path: Path) -> Ap
 
     state_dir_value = payload.get("state_dir") or payload.get("state") or "state"
     state_dir = resolve_path(base_dir, state_dir_value)
-    ensure_directory(state_dir)
+    try:
+        ensure_directory(state_dir)
+    except OSError as exc:
+        fallback_state_dir = (base_dir / "state").resolve()
+        try:
+            ensure_directory(fallback_state_dir)
+        except OSError:
+            raise
+        LOGGER.warning(
+            "Unable to access configured state_dir %s (%s); using fallback %s",
+            state_dir,
+            exc,
+            fallback_state_dir,
+        )
+        state_dir = fallback_state_dir
 
     dry_run = bool(payload.get("dry_run", False))
     log_level = str(payload.get("logging", {}).get("level", "INFO")).upper()

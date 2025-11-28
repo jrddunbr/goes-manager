@@ -43,9 +43,10 @@ This project is specifically designed with the following use case in mind:
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
-3. Install dependencies:
+3. Install the project in editable mode so the `goes_*` modules are on your
+   `PYTHONPATH`:
    ```bash
-   pip install -r requirements.txt  # if available
+   pip install -e .
    ```
 
 ### Configuration
@@ -68,10 +69,12 @@ Each component can be run as a standalone service or via systemd:
 
 **Manual execution:**
 ```bash
-python -m goes_filesystem_monitor
-python -m goes_health_monitor
-python -m goes_retention
+python -m goes_filesystem_monitor --help
+python -m goes_health_monitor --help
+python -m goes_retention --help
 ```
+Use `--config` / `--common-config` arguments as described in the docs when
+running the daemons.
 **Systemd services:**
 ```bash
 sudo cp systemd/*.service systemd/*.timer /etc/systemd/system/
