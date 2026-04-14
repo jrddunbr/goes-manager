@@ -7,7 +7,6 @@
         "name": "GOES imagery (Full + Mesos)",
         "directories": [
           "IMAGES/GOES-19",
-          "IMAGES/GOES-18",
           "IMAGES/GOES-16"
         ],
         "include": [
@@ -72,7 +71,6 @@
         "name": "GOES false-color archive",
         "directories": [
           "IMAGES/GOES-19",
-          "IMAGES/GOES-18",
           "IMAGES/GOES-16"
         ],
         "include": [
@@ -94,6 +92,68 @@
           },
           {
             "after": "400d",
+            "type": "delete"
+          }
+        ]
+      },
+      {
+        "name": "GOES-18 imagery (Full + Mesos)",
+        "directories": [
+          "IMAGES/GOES-18"
+        ],
+        "include": [
+          "**/*.png",
+          "**/*.jpg",
+          "**/*.gif"
+        ],
+        "exclude": [
+          "**/_thumbnails/**",
+          "**/*ABI_False_Color*.png",
+          "**/*ABI_False_Color*.jpg",
+          "**/*ABI_False_Color*.gif",
+          "**/*ABI_False_Color*.cbor"
+        ],
+        "actions": [
+          {
+            "after": "1d",
+            "type": "move",
+            "target": "ARCHIVE/WARM/IMAGES"
+          },
+          {
+            "after": "3d",
+            "type": "move",
+            "target": "ARCHIVE/SEASONAL/IMAGES"
+          },
+          {
+            "after": "7d",
+            "type": "delete"
+          }
+        ]
+      },
+      {
+        "name": "GOES-18 false-color archive",
+        "directories": [
+          "IMAGES/GOES-18"
+        ],
+        "include": [
+          "**/*ABI_False_Color*.png",
+          "**/*ABI_False_Color*.jpg",
+          "**/*ABI_False_Color*.gif",
+          "**/*ABI_False_Color*.cbor"
+        ],
+        "actions": [
+          {
+            "after": "1d",
+            "type": "move",
+            "target": "ARCHIVE/WARM/IMAGES/false_color"
+          },
+          {
+            "after": "3d",
+            "type": "move",
+            "target": "ARCHIVE/SEASONAL/IMAGES/false_color"
+          },
+          {
+            "after": "7d",
             "type": "delete"
           }
         ]

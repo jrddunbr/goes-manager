@@ -88,11 +88,11 @@ Top EMWIN graphic products (identified by NOAA mnemonic at the tail of each file
 - No new non-archive stream families appeared; GOES-16 Level-2 grids are still absent in the latest window.
 
 ## Capacity Outlook
-- Disk snapshot from `df` at 2026-01-22 13:09:39 EST.
-- Total storage on disk is 585.3 GiB (including `/ARCHIVE`); the non-archive working set is 75.6 GiB.
-- From 2025-11-27 to 2026-01-22, net growth was +261.5 GiB over 55.6 days (4.71 GiB/day).
-- `/var/satellite` reports 593.0 GiB used of 915.8 GiB total (69 % used), leaving 276.3 GiB free.
-- At 4.71 GiB/day, free space on `/var/satellite` lasts ~58.7 days without additional retention.
+- Filesystem utilization from user-provided `df` on 2026-04-14.
+- `current_usage10.tsv` captures 855.9 GiB on disk (including `/ARCHIVE`) through 2026-04-04 16:31:46; the non-archive working set is 99.8 GiB.
+- From the previous snapshot (`current_usage9.tsv`, ending 2025-11-27 23:12:34) to `current_usage10.tsv`, net growth was +532.1 GiB over 127.7 days (4.17 GiB/day).
+- `/var/satellite` reports 869.2 GiB used of 915.8 GiB total (100 % used), with 0.0 GiB free.
+- At the recent 4.17 GiB/day growth rate, the filesystem has no remaining runway without immediate cleanup or additional retention.
 - Retention settings in `docs/retention.md` remain the primary lever for reducing this net growth rate.
 
 ## Observations

@@ -308,10 +308,10 @@ class RetentionManager:
         if self.dry_run:
             logger.info("[dry-run] Would move %s to %s (rule=%s)", file_path, destination, rule.name)
         else:
-            ensure_directory(destination.parent)
-            if destination.exists():
-                logger.warning("Destination already exists, overwriting: %s", destination)
             try:
+                ensure_directory(destination.parent)
+                if destination.exists():
+                    logger.warning("Destination already exists, overwriting: %s", destination)
                 source_parent = file_path.parent
                 shutil.move(str(file_path), str(destination))
                 logger.info("Moved %s -> %s (rule=%s)", file_path, destination, rule.name)

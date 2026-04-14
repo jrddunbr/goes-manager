@@ -11,6 +11,7 @@ from goes_manager.config import (
     RetentionConfig,
     RetentionRuleConfig,
 )
+from goes_retention import engine as retention_engine
 from goes_retention.engine import RetentionManager
 
 
@@ -94,3 +95,22 @@ def test_missing_action_directories_are_created(tmp_path) -> None:
 
     assert roots["warm"].exists(), "retention should create warm target directories automatically"
     assert roots["seasonal"].exists(), "retention should create seasonal target directories automatically"
+
+
+def test_move_directory_creation_failure_does_not_abort_run(tmp_path, monkeypatch) -> None:
+    manager, roots = build_manager(tmp_path)
+    hot_file = roots["hot"] / "Full Disk" / "sample.png"
+    make_file(hot_file, age_seconds=4)
+
+    def fail_ensure_directory(path: Path) -> None:
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(retention_engine, "ensure_directory", fail_ensure_directory)
+
+    summary = manager.run_once()
+
+    assert hot_file.exists(), "source should remain when target directory creation fails"
+    assert len(summary.results) == 1
+    result = summary.results[0]
+    assert result.action == "move"
+    assert "No space left on device" in result.detail

@@ -4,3 +4,5 @@
 *.txt
 *.log
 *.tsv
+config/common.json
+config/retention.json
