@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EMWIN Image Dashboard</title>
+    <style>
+      :root {
+        --bg: #eef1e7;
+        --panel: rgba(252, 250, 245, 0.94);
+        --ink: #132018;
+        --muted: #5a695f;
+        --accent: #a94c1f;
+        --line: rgba(19, 32, 24, 0.12);
+        --shadow: 0 18px 48px rgba(19, 32, 24, 0.12);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top right, rgba(169, 76, 31, 0.14), transparent 28%),
+          linear-gradient(180deg, #f5f1e7 0%, #dce6df 100%);
+      }
+
+      .shell {
+        min-height: 100vh;
+        padding: 22px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+      }
+
+      .banner {
+        padding: 22px 26px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(169, 76, 31, 0.12);
+        color: var(--accent);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 14px 0 8px;
+        font-family: "IBM Plex Serif", Georgia, serif;
+        font-size: clamp(2rem, 3vw, 3rem);
+        line-height: 1;
+      }
+
+      .subtitle, .meta {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .topbar {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding: 16px 26px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .tab {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.65);
+        color: var(--ink);
+        border-radius: 999px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .tab.active {
+        background: var(--accent);
+        color: white;
+        border-color: transparent;
+      }
+
+      .content {
+        padding: 18px 18px 22px;
+      }
+
+      .image-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+      }
+
+      .composite-panel {
+        display: grid;
+        gap: 16px;
+      }
+
+      .composite-card {
+        display: grid;
+        gap: 14px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.55);
+      }
+
+      .composite-card img {
+        width: 100%;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: rgba(19, 32, 24, 0.04);
+        cursor: zoom-in;
+      }
+
+      .image-card {
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        gap: 10px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.55);
+      }
+
+      .image-card img {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(19, 32, 24, 0.04);
+        cursor: zoom-in;
+      }
+
+      .image-title {
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      .image-meta {
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      .image-summary {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .image-links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .image-links a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .image-links a:hover {
+        text-decoration: underline;
+      }
+
+      .radar-layout {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-template-areas:
+          "alaska northwest north-central upper-mississippi great-lakes northeast"
+          "hawaii southwest south-central southern-plains lower-mississippi southeast"
+          ". . . . national-below puerto-rico"
+          ". . . . . guam";
+        gap: 16px;
+      }
+
+      .image-card[data-slot="alaska"] { grid-area: alaska; }
+      .image-card[data-slot="northwest"] { grid-area: northwest; }
+      .image-card[data-slot="north-central"] { grid-area: north-central; }
+      .image-card[data-slot="upper-mississippi"] { grid-area: upper-mississippi; }
+      .image-card[data-slot="great-lakes"] { grid-area: great-lakes; }
+      .image-card[data-slot="northeast"] { grid-area: northeast; }
+      .image-card[data-slot="hawaii"] { grid-area: hawaii; }
+      .image-card[data-slot="southwest"] { grid-area: southwest; }
+      .image-card[data-slot="national-below"] { grid-area: national-below; }
+      .image-card[data-slot="lower-mississippi"] { grid-area: lower-mississippi; }
+      .image-card[data-slot="southeast"] { grid-area: southeast; }
+      .image-card[data-slot="southern-plains"] { grid-area: southern-plains; }
+      .image-card[data-slot="south-central"] { grid-area: south-central; }
+      .image-card[data-slot="puerto-rico"] { grid-area: puerto-rico; }
+      .image-card[data-slot="guam"] { grid-area: guam; }
+
+      .timeline-controls {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .timeline-button {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--ink);
+        border-radius: 999px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.8rem;
+      }
+
+      .timeline-button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+
+      .empty {
+        padding: 28px;
+        color: var(--muted);
+      }
+
+      .lightbox {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(7, 10, 9, 0.82);
+        z-index: 1000;
+      }
+
+      .lightbox.is-open {
+        display: flex;
+      }
+
+      .lightbox-frame {
+        max-width: min(96vw, 1680px);
+        max-height: 94vh;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 12px;
+      }
+
+      .lightbox-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        color: white;
+      }
+
+      .lightbox-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+
+      .lightbox-close {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.12);
+        color: white;
+        border-radius: 999px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .lightbox-image-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        min-height: 0;
+      }
+
+      .lightbox-image {
+        width: min(96vw, 1680px);
+        height: calc(94vh - 60px);
+        max-width: 100%;
+        max-height: calc(94vh - 60px);
+        object-fit: contain;
+        border-radius: 14px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+      }
+
+      @media (max-width: 1100px) {
+        .radar-layout {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-areas: none;
+        }
+
+        .image-card[data-slot] {
+          grid-area: auto;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .shell {
+          padding: 12px;
+        }
+
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .image-grid,
+        .radar-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <section class="panel">
+        <div class="banner">
+          <div class="topbar">
+            <div>
+              <div class="eyebrow">EMWIN images last {{ state.hours }} hours</div>
+              <h1>Graphic product dashboard</h1>
+              <p class="subtitle">All EMWIN images are separated from the station map and organized by product category.</p>
+              <p class="meta">Source root: <code>{{ state.root }}</code> · <a href="/">Back to station dashboard</a></p>
+            </div>
+            <div class="meta">{{ state.counts.images }} images across {{ state.counts.categories }} categories</div>
+          </div>
+        </div>
+
+        <div class="tabs" id="tabs">
+          {% if state.radar_composite %}
+            <button class="tab active" type="button" data-category="radar-composite">
+              Radar Composite {{ state.radar_composite.frame_count }}
+            </button>
+          {% endif %}
+          {% for category in state.categories %}
+            <button class="tab{% if not state.radar_composite and loop.first %} active{% endif %}" type="button" data-category="{{ category.key }}">
+              {{ category.label }} {{ category.count }}
+            </button>
+          {% endfor %}
+        </div>
+
+        <div class="content" id="content"></div>
+      </section>
+    </div>
+
+    <div class="lightbox" id="lightbox" aria-hidden="true">
+      <div class="lightbox-frame">
+        <div class="lightbox-topbar">
+          <div class="lightbox-title" id="lightbox-title"></div>
+          <button class="lightbox-close" type="button" id="lightbox-close">Close</button>
+        </div>
+        <div class="lightbox-image-wrap">
+          <img class="lightbox-image" id="lightbox-image" alt="">
+        </div>
+      </div>
+    </div>
+
+    <script id="images-state" type="application/json">{{ state|tojson }}</script>
+    <script>
+      const state = JSON.parse(document.getElementById("images-state").textContent);
+      const tabs = Array.from(document.querySelectorAll(".tab"));
+      const content = document.getElementById("content");
+      const lightbox = document.getElementById("lightbox");
+      const lightboxImage = document.getElementById("lightbox-image");
+      const lightboxTitle = document.getElementById("lightbox-title");
+      const lightboxClose = document.getElementById("lightbox-close");
+      const productUrl = (relativePath) => `/api/product?path=${encodeURIComponent(relativePath)}`;
+      const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+      }[char]));
+      const formatTime = (value) => new Date(value).toLocaleString();
+      const compositeUrl = "/api/radar-composite";
+      let compositePollTimer = null;
+
+      const renderGroupCard = (group, frameIndex = 0) => {
+        const frame = group.frames[frameIndex];
+        return `
+        <article class="image-card" ${group.image_slot ? `data-slot="${escapeHtml(group.image_slot)}"` : ""} data-history-key="${escapeHtml(group.history_key)}" data-frame-index="${frameIndex}">
+          <div>
+            <div class="image-meta">${escapeHtml(formatTime(frame.receipt_time))}</div>
+            <h2 class="image-title">${escapeHtml(group.title)}</h2>
+          </div>
+          <img src="${productUrl(frame.relative_path)}" alt="${escapeHtml(group.title)}" data-lightbox-src="${productUrl(frame.relative_path)}" data-lightbox-title="${escapeHtml(group.title)}">
+          <div>
+            <p class="image-summary">${escapeHtml(frame.summary)}</p>
+            <div class="image-links">
+              <a href="${productUrl(frame.relative_path)}" target="_blank" rel="noreferrer">Open image</a>
+              <span class="image-meta">${escapeHtml(frame.awips_id)}</span>
+            </div>
+            ${group.category !== "radar-regions" && group.frames.length > 1 ? `
+              <div class="timeline-controls">
+                <button class="timeline-button" type="button" data-direction="older" ${frameIndex >= group.frames.length - 1 ? "disabled" : ""}>Older</button>
+                <button class="timeline-button" type="button" data-direction="newer" ${frameIndex === 0 ? "disabled" : ""}>Newer</button>
+              </div>
+            ` : ""}
+          </div>
+        </article>
+      `;
+      };
+
+      const renderGroupCollection = (groups) => groups.map((group) => renderGroupCard(group, 0)).join("");
+
+      const renderRadarComposite = () => {
+        const composite = state.radar_composite;
+        if (!composite) {
+          content.innerHTML = '<div class="empty">No recent national radar frames are available for the composite view.</div>';
+          return;
+        }
+        content.innerHTML = `
+          <section class="composite-panel">
+            <article class="composite-card">
+              <div>
+                <div class="image-meta">
+                  Latest ${escapeHtml(formatTime(composite.latest_receipt_time))} ·
+                  Oldest ${escapeHtml(formatTime(composite.oldest_receipt_time))}
+                </div>
+                <h2 class="image-title">${escapeHtml(composite.title)}</h2>
+              </div>
+              <div id="composite-stage">
+                <div class="empty">Rendering composite from cached regional radar frames…</div>
+              </div>
+              <div>
+                <p class="image-summary">${escapeHtml(composite.summary)}</p>
+                <div class="image-links">
+                  <a href="${compositeUrl}" target="_blank" rel="noreferrer">Open composite</a>
+                  <span class="image-meta">${escapeHtml(composite.latest_awips_id)} · ${escapeHtml(String(composite.frame_count))} tiles</span>
+                </div>
+              </div>
+            </article>
+          </section>
+        `;
+        startCompositePolling(composite);
+      };
+
+      const setCompositeReady = (composite) => {
+        const stage = document.getElementById("composite-stage");
+        if (!stage) {
+          return;
+        }
+        stage.innerHTML = `
+          <img src="${compositeUrl}?v=${encodeURIComponent(composite.signature)}"
+            alt="${escapeHtml(composite.title)}"
+            data-lightbox-src="${compositeUrl}?v=${encodeURIComponent(composite.signature)}"
+            data-lightbox-title="${escapeHtml(composite.title)}">
+        `;
+      };
+
+      const setCompositePending = () => {
+        const stage = document.getElementById("composite-stage");
+        if (!stage) {
+          return;
+        }
+        stage.innerHTML = '<div class="empty">Rendering composite from cached regional radar frames…</div>';
+      };
+
+      const startCompositePolling = async (composite) => {
+        if (compositePollTimer) {
+          window.clearTimeout(compositePollTimer);
+          compositePollTimer = null;
+        }
+        setCompositePending();
+        const poll = async () => {
+          const response = await fetch(compositeUrl, { headers: { Accept: "application/json" } });
+          if (response.ok && response.headers.get("content-type")?.startsWith("image/")) {
+            setCompositeReady(composite);
+            return;
+          }
+          compositePollTimer = window.setTimeout(poll, 1200);
+        };
+        await poll();
+      };
+
+      const renderCategory = (categoryKey) => {
+        if (compositePollTimer && categoryKey !== "radar-composite") {
+          window.clearTimeout(compositePollTimer);
+          compositePollTimer = null;
+        }
+        if (categoryKey === "radar-composite") {
+          renderRadarComposite();
+          return;
+        }
+        const groups = state.image_groups.filter((group) => group.category === categoryKey);
+        if (!groups.length) {
+          content.innerHTML = '<div class="empty">No images in this category for the current time window.</div>';
+          return;
+        }
+
+        if (categoryKey === "radar-regions") {
+          const slotted = [];
+          const unslotted = [];
+          for (const group of groups) {
+            if (group.image_slot) {
+              slotted.push(group);
+            } else {
+              unslotted.push(group);
+            }
+          }
+          content.innerHTML = `
+            <div class="radar-layout">
+              ${renderGroupCollection(slotted)}
+            </div>
+            ${unslotted.length ? `<div class="image-grid" style="margin-top:16px;">${renderGroupCollection(unslotted)}</div>` : ""}
+          `;
+          return;
+        }
+
+        content.innerHTML = `<div class="image-grid">${renderGroupCollection(groups)}</div>`;
+      };
+
+      content.addEventListener("click", (event) => {
+        const button = event.target.closest(".timeline-button");
+        if (!button) {
+          return;
+        }
+        const card = button.closest("[data-history-key]");
+        if (!card) {
+          return;
+        }
+        const historyKey = card.dataset.historyKey;
+        const group = state.image_groups.find((item) => item.history_key === historyKey);
+        if (!group) {
+          return;
+        }
+        const currentIndex = Number(card.dataset.frameIndex || "0");
+        const nextIndex = button.dataset.direction === "older" ? currentIndex + 1 : currentIndex - 1;
+        if (nextIndex < 0 || nextIndex >= group.frames.length) {
+          return;
+        }
+        card.outerHTML = renderGroupCard(group, nextIndex);
+      });
+
+      const openLightbox = (src, title) => {
+        lightboxImage.src = src;
+        lightboxImage.alt = title;
+        lightboxTitle.textContent = title;
+        lightbox.classList.add("is-open");
+        lightbox.setAttribute("aria-hidden", "false");
+      };
+
+      const closeLightbox = () => {
+        lightbox.classList.remove("is-open");
+        lightbox.setAttribute("aria-hidden", "true");
+        lightboxImage.src = "";
+        lightboxImage.alt = "";
+        lightboxTitle.textContent = "";
+      };
+
+      content.addEventListener("click", (event) => {
+        const image = event.target.closest("[data-lightbox-src]");
+        if (!image) {
+          return;
+        }
+        openLightbox(image.dataset.lightboxSrc, image.dataset.lightboxTitle || "EMWIN image");
+      });
+
+      lightboxClose.addEventListener("click", closeLightbox);
+      lightbox.addEventListener("click", (event) => {
+        if (event.target === lightbox) {
+          closeLightbox();
+        }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && lightbox.classList.contains("is-open")) {
+          closeLightbox();
+        }
+      });
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          tabs.forEach((item) => item.classList.toggle("active", item === tab));
+          renderCategory(tab.dataset.category);
+        });
+      });
+
+      if (tabs.length) {
+        renderCategory(tabs[0].dataset.category);
+      } else {
+        content.innerHTML = '<div class="empty">No recent images available.</div>';
+      }
+    </script>
+  </body>
+</html>

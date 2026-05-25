@@ -72,6 +72,7 @@ Each component can be run as a standalone service or via systemd:
 python -m goes_filesystem_monitor --help
 python -m goes_health_monitor --help
 python -m goes_retention --help
+python -m goes_dashboard --root EMWIN --hours 6 --host 0.0.0.0 --port 8080
 ```
 Use `--config` / `--common-config` arguments as described in the docs when
 running the daemons.

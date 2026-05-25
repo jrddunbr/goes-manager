@@ -8,6 +8,10 @@ version = "0.1.0"
 description = "Tools for monitoring and managing GOES satellite ground-station data"
 readme = "readme.md"
 requires-python = ">=3.11"
+dependencies = [
+  "Flask>=3.0",
+  "Pillow>=10.0",
+]
 license = { file = "LICENSE" }
 authors = [
   { name = "Jared" }
@@ -22,3 +26,6 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+goes_dashboard = ["templates/*.html", "data/*.csv"]

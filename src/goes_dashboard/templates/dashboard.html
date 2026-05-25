@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EMWIN Dashboard</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    >
+    <style>
+      :root {
+        --bg: #eef2e8;
+        --panel: rgba(253, 251, 246, 0.94);
+        --ink: #14211b;
+        --muted: #56655d;
+        --accent: #bf4f2f;
+        --accent-soft: #e8b194;
+        --line: rgba(20, 33, 27, 0.12);
+        --shadow: 0 18px 50px rgba(20, 33, 27, 0.12);
+      }
+
+      * { box-sizing: border-box; }
+      html, body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(191, 79, 47, 0.14), transparent 30%),
+          linear-gradient(180deg, #f5f1e7 0%, #d9e5de 100%);
+      }
+
+      .shell {
+        height: 100vh;
+        display: grid;
+        grid-template-columns: minmax(360px, 1.3fr) minmax(320px, 0.9fr);
+        gap: 18px;
+        padding: 18px;
+        overflow: hidden;
+      }
+
+      .panel {
+        height: 100%;
+        min-height: 0;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+      }
+
+      .map-panel {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .banner {
+        padding: 20px 24px 12px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(191, 79, 47, 0.1);
+        color: var(--accent);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 14px 0 8px;
+        font-family: "IBM Plex Serif", Georgia, serif;
+        font-size: clamp(2rem, 3vw, 3rem);
+        line-height: 1;
+      }
+
+      .subtitle, .meta {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        padding: 0 24px 16px;
+      }
+
+      .stat {
+        padding: 14px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.45);
+      }
+
+      .stat-label {
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      .stat-value {
+        margin-top: 6px;
+        font-size: 1.6rem;
+        font-weight: 700;
+      }
+
+      #map {
+        flex: 1 1 auto;
+        min-height: 420px;
+        height: auto;
+        border-top: 1px solid var(--line);
+      }
+
+      .map-fallback {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 20% 10%, rgba(43, 109, 224, 0.14), transparent 28%),
+          linear-gradient(180deg, #eef4f8 0%, #d7e2dd 100%);
+      }
+
+      .map-fallback svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .map-fallback-panel {
+        position: absolute;
+        right: 18px;
+        top: 18px;
+        width: min(320px, calc(100% - 36px));
+        padding: 14px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(253, 251, 246, 0.92);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(8px);
+      }
+
+      .map-fallback-title {
+        margin: 0 0 6px;
+        font-weight: 700;
+      }
+
+      .map-fallback-note {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.84rem;
+        line-height: 1.4;
+      }
+
+      .map-fallback-station {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+      }
+
+      .map-fallback-list {
+        margin: 10px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .map-fallback-list li + li {
+        margin-top: 8px;
+      }
+
+      .feed-panel {
+        display: grid;
+        grid-template-rows: auto auto auto minmax(0, 1fr);
+        min-height: 0;
+      }
+
+      .family-strip {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding: 0 24px 18px;
+      }
+
+      .chip {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(20, 33, 27, 0.06);
+        color: var(--ink);
+        font-size: 0.82rem;
+      }
+
+      .map-note {
+        padding: 0 24px 16px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .feed {
+        overflow: auto;
+        padding: 0 18px 18px;
+        min-height: 0;
+      }
+
+      .feed-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 0 24px 16px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .feed-control-input {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--ink);
+        border-radius: 999px;
+        padding: 8px 12px;
+        font: inherit;
+        min-width: 160px;
+      }
+
+      .sort-button {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.6);
+        color: var(--ink);
+        border-radius: 999px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .sort-button.active {
+        background: var(--accent);
+        color: white;
+        border-color: transparent;
+      }
+
+      .product {
+        padding: 14px 12px;
+        border-top: 1px solid var(--line);
+        scroll-margin-top: 24px;
+      }
+
+      .product:first-child {
+        border-top: none;
+      }
+
+      .product.is-active {
+        background: rgba(191, 79, 47, 0.08);
+      }
+
+      .product-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .product-code {
+        font-weight: 700;
+      }
+
+      .product-time, .popup-meta {
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      .product-title {
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      .product-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 8px 0;
+      }
+
+      .product-badge {
+        padding: 5px 8px;
+        border-radius: 999px;
+        background: rgba(20, 33, 27, 0.08);
+        color: var(--ink);
+        font-size: 0.76rem;
+        font-weight: 600;
+      }
+
+      .product-summary {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .product-details {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .product-detail {
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--line);
+      }
+
+      .product-expandable {
+        margin-top: 12px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.5);
+        overflow: hidden;
+      }
+
+      .product-expandable summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 10px 12px;
+        font-weight: 600;
+      }
+
+      .product-expandable summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .product-report-list {
+        display: grid;
+        gap: 8px;
+        padding: 0 12px 12px;
+      }
+
+      .product-report-item {
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: rgba(20, 33, 27, 0.04);
+      }
+
+      .product-report-plain {
+        margin-top: 4px;
+        color: var(--muted);
+      }
+
+      .product-report-code {
+        font-weight: 700;
+      }
+
+      .product-detail-label {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .leaflet-popup-content {
+        margin: 10px 12px;
+        min-width: 280px;
+      }
+
+      .popup-title {
+        margin: 0 0 6px;
+        font-weight: 700;
+      }
+
+      .popup-list {
+        display: grid;
+        gap: 6px;
+        margin: 10px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .popup-list li {
+        margin: 0;
+        padding: 0;
+      }
+
+      .popup-summary {
+        margin: 10px 0 0;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .popup-section-title {
+        margin: 14px 0 6px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .popup-link-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: baseline;
+      }
+
+      .popup-weather {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .popup-weather-item {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        padding: 9px 10px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.6);
+        border: 1px solid var(--line);
+      }
+
+      .popup-weather-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        flex: 0 0 24px;
+        color: var(--accent);
+      }
+
+      .popup-weather-copy {
+        min-width: 0;
+      }
+
+      .popup-weather-label {
+        display: block;
+        color: var(--muted);
+        font-size: 0.74rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .popup-weather-value {
+        display: block;
+        margin-top: 1px;
+        font-size: 0.86rem;
+        line-height: 1.25;
+      }
+
+      .wind-arrow {
+        width: 24px;
+        height: 24px;
+        transform-origin: 12px 12px;
+      }
+
+      .popup-products {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .popup-product-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 9px;
+        border-radius: 999px;
+        background: rgba(20, 33, 27, 0.06);
+        border: 1px solid var(--line);
+        font-size: 0.8rem;
+        line-height: 1;
+      }
+
+      .popup-product-pill .popup-link {
+        margin-top: 0;
+        white-space: nowrap;
+      }
+
+      .popup-product-meta {
+        color: var(--muted);
+        font-size: 0.74rem;
+        white-space: nowrap;
+      }
+
+      .popup-link {
+        display: inline-block;
+        margin-top: 6px;
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .popup-link:hover {
+        text-decoration: underline;
+      }
+
+      .popup-image {
+        display: block;
+        width: 100%;
+        margin-top: 8px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+      }
+
+      @media (max-width: 1100px) {
+        .shell {
+          height: auto;
+          min-height: 100vh;
+          overflow: visible;
+          grid-template-columns: 1fr;
+        }
+
+        .panel {
+          height: auto;
+        }
+
+        #map {
+          height: 55vh;
+          min-height: 420px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .stats {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .popup-weather {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <section class="panel map-panel">
+        <div class="banner">
+          <div class="eyebrow">EMWIN last {{ state.hours }} hours</div>
+          <h1>Station map and recent bulletin view</h1>
+          <p class="subtitle">Hover a marker for the location code. Click it for recent product details tied to that station.</p>
+          <p class="meta">Source root: <code>{{ state.root }}</code> · <a href="/images">Open image dashboard</a></p>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Resolved stations</div>
+            <div class="stat-value">{{ state.counts.stations }}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Recent products</div>
+            <div class="stat-value">{{ state.counts.products }}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Text bulletins</div>
+            <div class="stat-value">{{ state.counts.text_products }}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Graphics</div>
+            <div class="stat-value">{{ state.counts.graphic_products }}</div>
+          </div>
+        </div>
+
+        <div class="map-note">Station markers represent text products with airport-specific weather details. Graphic products are available in the dedicated image dashboard.</div>
+
+        <div id="map"></div>
+      </section>
+
+      <aside class="panel feed-panel">
+        <div class="banner">
+          <div class="eyebrow">Recent feed</div>
+          <h1>Incoming EMWIN products</h1>
+          <p class="subtitle">Ordered by EMWIN receipt time rather than filesystem mtime.</p>
+          <p class="meta">Generated {{ state.generated_at }}</p>
+        </div>
+
+        <div class="family-strip">
+          {% for family in state.families[:12] %}
+            <span class="chip">{{ family.label }} {{ family.count }}</span>
+          {% endfor %}
+        </div>
+
+        <div class="feed-controls">
+          <button class="sort-button active" type="button" data-sort="newest">Newest</button>
+          <button class="sort-button" type="button" data-sort="oldest">Oldest</button>
+          <select class="feed-control-input" id="type-filter">
+            <option value="">All types</option>
+          </select>
+          <input class="feed-control-input" id="station-filter" list="station-options" type="text" placeholder="All stations">
+          <datalist id="station-options"></datalist>
+        </div>
+
+        <div class="feed" id="feed"></div>
+      </aside>
+    </div>
+
+    <script id="dashboard-state" type="application/json">{{ state|tojson }}</script>
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script>
+      const state = JSON.parse(document.getElementById("dashboard-state").textContent);
+      const mapContainer = document.getElementById("map");
+      const feed = document.getElementById("feed");
+      const sortButtons = Array.from(document.querySelectorAll(".sort-button"));
+      const typeFilter = document.getElementById("type-filter");
+      const stationFilter = document.getElementById("station-filter");
+      const stationOptions = document.getElementById("station-options");
+      const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+      }[char]));
+      const markerStyleFor = (markerKind) => ({
+        graphic: { color: "#1d4ed8", fillColor: "#2b6de0" },
+        mixed: { color: "#247436", fillColor: "#2f9e44" },
+        text: { color: "#922b21", fillColor: "#c0392b" }
+      }[markerKind] || { color: "#922b21", fillColor: "#c0392b" });
+      const formatTime = (value) => new Date(value).toLocaleString();
+      const productUrl = (relativePath) => `/api/product?path=${encodeURIComponent(relativePath)}`;
+      const isRenderableImage = (product) => product.category === "graphic" && ["gif", "png", "jpg", "jpeg", "webp"].includes(product.extension);
+      const iconSvg = {
+        thermometer: `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10 4a2 2 0 1 1 4 0v8.2a4.5 4.5 0 1 1-4 0V4z" fill="currentColor" opacity="0.18"></path>
+            <path d="M12 5v9" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+            <circle cx="12" cy="17" r="3.2" fill="currentColor"></circle>
+          </svg>`,
+        eye: `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" fill="none" stroke="currentColor" stroke-width="1.8"></path>
+            <circle cx="12" cy="12" r="2.8" fill="currentColor"></circle>
+          </svg>`,
+        pressure: `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+            <path d="M12 12L16.5 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+            <circle cx="12" cy="12" r="1.3" fill="currentColor"></circle>
+          </svg>`,
+        sky: `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 17h9a3 3 0 0 0 .2-6A5 5 0 0 0 6.8 9.7 3.5 3.5 0 0 0 7 17z" fill="currentColor"></path>
+          </svg>`,
+        weather: `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 14.5h9a3 3 0 0 0 .2-6A5 5 0 0 0 6.8 7.2 3.5 3.5 0 0 0 7 14.5z" fill="currentColor" opacity="0.8"></path>
+            <path d="M9 17.2l-1 2M13 17.2l-1 2M17 17.2l-1 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+          </svg>`,
+        wind: (deg) => `
+          <svg class="wind-arrow" viewBox="0 0 24 24" aria-hidden="true" style="transform: rotate(${deg}deg);">
+            <path d="M12 3l4 6h-2.6V20h-2.8V9H8z" fill="currentColor"></path>
+          </svg>`,
+      };
+      const renderWeatherGrid = (details, summary = "") => {
+        const weather = details || {};
+        const items = [
+          weather.wind ? { icon: iconSvg.wind(weather.wind_degrees || 0), label: "Wind", value: weather.wind } : null,
+          weather.temperature_f ? { icon: iconSvg.thermometer, label: "Temperature", value: `Temp ${weather.temperature_f}${weather.dew_point_f ? ` · Dew point ${weather.dew_point_f}` : ""}` } : null,
+          weather.visibility ? { icon: iconSvg.eye, label: "Visibility", value: weather.visibility } : null,
+          weather.pressure ? { icon: iconSvg.pressure, label: "Pressure", value: weather.pressure } : null,
+          weather.sky && weather.sky !== weather.weather ? { icon: iconSvg.sky, label: "Sky", value: weather.sky } : null,
+          weather.weather ? { icon: iconSvg.weather, label: "Weather", value: weather.weather } : null,
+        ].filter(Boolean);
+        if (!items.length) {
+          return summary ? `<p class="popup-summary">${escapeHtml(summary)}</p>` : "";
+        }
+        return `
+          <div class="popup-weather">
+            ${items.map((item) => `
+              <div class="popup-weather-item">
+                <span class="popup-weather-icon">${item.icon}</span>
+                <span class="popup-weather-copy">
+                  <span class="popup-weather-label">${escapeHtml(item.label)}</span>
+                  <span class="popup-weather-value">${escapeHtml(item.value)}</span>
+                </span>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      };
+      const focusFeedEntry = (feedId) => {
+        const entry = document.getElementById(feedId);
+        if (!entry) {
+          return;
+        }
+        document.querySelectorAll(".product.is-active").forEach((item) => item.classList.remove("is-active"));
+        entry.classList.add("is-active");
+        entry.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      };
+      const currentSort = () => document.querySelector(".sort-button.active")?.dataset.sort || "newest";
+      const renderStationPopupContent = (station) => {
+        const items = station.products.map((product) => `
+          <li>
+            <div class="popup-product-pill">
+              <a class="popup-link" href="#${escapeHtml(product.feed_id)}" data-feed-id="${escapeHtml(product.feed_id)}">${escapeHtml(product.report_label || product.awips_id)}</a>
+              <span class="popup-product-meta">Show in feed</span>
+            </div>
+          </li>
+        `).join("");
+
+        return `
+          <div>
+            <div class="popup-title">${escapeHtml(station.code)}</div>
+            <div class="popup-meta">${escapeHtml(station.name)}</div>
+            <div class="popup-meta">${escapeHtml([station.city, station.subdivision].filter(Boolean).join(", "))}</div>
+            ${station.weather_time ? `<div class="popup-meta">${escapeHtml(formatTime(station.weather_time))}</div>` : ""}
+            ${renderWeatherGrid(station.weather_details, station.weather_summary)}
+            <div class="popup-section-title">Products</div>
+            <ul class="popup-list popup-products">${items}</ul>
+          </div>
+        `;
+      };
+
+      const renderProducts = (sortKey) => {
+        const selectedType = typeFilter.value;
+        const selectedStation = stationFilter.value.trim().toUpperCase();
+        const products = state.products.filter((product) => {
+          if (selectedType && product.product_type !== selectedType) {
+            return false;
+          }
+          if (selectedStation) {
+            const stationCandidates = [...(product.station_codes || []), product.originator].filter(Boolean).map((item) => String(item).toUpperCase());
+            if (!stationCandidates.includes(selectedStation)) {
+              return false;
+            }
+          }
+          return true;
+        });
+        products.sort((left, right) => {
+          if (sortKey === "oldest") {
+            return new Date(left.receipt_time) - new Date(right.receipt_time);
+          }
+          return right.receipt_time.localeCompare(left.receipt_time);
+        });
+
+        feed.innerHTML = products.map((product) => {
+          const displayTitle = product.title === product.awips_id
+            ? product.awips_id
+            : (product.title.startsWith(`${product.awips_id} ·`) ? product.title : `${product.awips_id} · ${product.title}`);
+          const badges = [
+            `<span class="product-badge">${escapeHtml(product.product_type)}</span>`
+          ];
+          if (product.related_reports && product.related_reports.length > 1) {
+            const bundledLabel = product.awips_id === "TAFALLUS"
+              ? `${product.related_reports.length} bundled forecasts`
+              : `${product.related_reports.length} bundled reports`;
+            badges.push(`<span class="product-badge">${escapeHtml(bundledLabel)}</span>`);
+          }
+
+          const details = (product.detail_sections || []).map((item) => `
+            <div class="product-detail">
+              <span class="product-detail-label">${escapeHtml(item.label)}</span>
+              <div>${escapeHtml(item.value)}</div>
+            </div>
+          `).join("");
+
+          const isBundledBulletin = ["SAHOURLY", "TAFALLUS"].includes(product.awips_id) || product.family === "MIS";
+          const reportSectionLabel = product.awips_id === "TAFALLUS"
+            ? `Click to see ${product.related_reports.length} forecasts in bulletin`
+            : `Click to see ${product.related_reports.length} reports in bulletin`;
+          const reportSection = (product.related_reports && product.related_reports.length > 0 && isBundledBulletin) ? `
+            <details class="product-expandable">
+              <summary>${escapeHtml(reportSectionLabel)}</summary>
+              <div class="product-report-list">
+                ${product.related_reports.map((report) => `
+                  <div class="product-report-item">
+                    <span class="product-report-code">${escapeHtml(report.code)}</span>
+                    <div>${escapeHtml(report.summary)}</div>
+                    ${report.plain ? `<div class="product-report-plain">${escapeHtml(report.plain)}</div>` : ""}
+                  </div>
+                `).join("")}
+              </div>
+            </details>
+          ` : "";
+
+          return `
+            <article class="product" id="${escapeHtml(product.feed_id)}">
+              <div class="product-top">
+                <h2 class="product-title">${escapeHtml(displayTitle)}</h2>
+                <span class="product-time">${escapeHtml(formatTime(product.receipt_time))}</span>
+              </div>
+              <div class="product-badges">${badges.join("")}</div>
+              ${(product.related_reports && product.related_reports.length > 0 && isBundledBulletin) ? "" : `<p class="product-summary">${escapeHtml(product.summary)}</p>`}
+              ${isRenderableImage(product) ? `<img class="popup-image" src="${productUrl(product.relative_path)}" alt="${escapeHtml(product.awips_id)} preview">` : ""}
+              ${details ? `<div class="product-details">${details}</div>` : ""}
+              ${reportSection}
+            </article>
+          `;
+        }).join("");
+      };
+
+      const renderLeafletMap = () => {
+        const map = L.map("map", { zoomControl: true, preferCanvas: true }).setView([39.8, -98.6], 4);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 18,
+          attribution: "&copy; OpenStreetMap contributors"
+        }).addTo(map);
+
+        const bounds = [];
+        for (const station of state.stations) {
+          const markerStyle = markerStyleFor(station.marker_kind);
+          const marker = L.circleMarker([station.latitude, station.longitude], {
+            radius: 6,
+            weight: 1,
+            color: markerStyle.color,
+            fillColor: markerStyle.fillColor,
+            fillOpacity: 0.82
+          }).addTo(map);
+
+          marker.bindTooltip(station.code, { direction: "top", offset: [0, -4] });
+          marker.bindPopup(renderStationPopupContent(station));
+          bounds.push([station.latitude, station.longitude]);
+        }
+
+        if (bounds.length > 0) {
+          map.fitBounds(bounds, { padding: [30, 30] });
+        }
+      };
+
+      const renderFallbackMap = () => {
+        const width = Math.max(mapContainer.clientWidth || 800, 800);
+        const height = Math.max(mapContainer.clientHeight || 520, 520);
+        const lonMin = -170;
+        const lonMax = -50;
+        const latMin = 10;
+        const latMax = 75;
+        const projectX = (lon) => ((lon - lonMin) / (lonMax - lonMin)) * width;
+        const projectY = (lat) => height - ((lat - latMin) / (latMax - latMin)) * height;
+        const fallbackMarkup = `
+          <div class="map-fallback">
+            <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="EMWIN station map fallback">
+              <defs>
+                <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+                  <path d="M 80 0 L 0 0 0 80" fill="none" stroke="rgba(20,33,27,0.08)" stroke-width="1" />
+                </pattern>
+              </defs>
+              <rect width="${width}" height="${height}" fill="url(#grid)"></rect>
+              <rect x="0" y="${projectY(49)}" width="${width}" height="${height - projectY(49)}" fill="rgba(113, 155, 186, 0.12)"></rect>
+              ${state.stations.map((station) => {
+                const markerStyle = markerStyleFor(station.marker_kind);
+                return `
+                  <circle
+                    class="fallback-station-dot"
+                    cx="${projectX(station.longitude)}"
+                    cy="${projectY(station.latitude)}"
+                    r="4.5"
+                    fill="${markerStyle.fillColor}"
+                    stroke="${markerStyle.color}"
+                    stroke-width="1.2"
+                    data-station-code="${escapeHtml(station.code)}"
+                  >
+                    <title>${escapeHtml(station.code)} ${escapeHtml(station.name)}</title>
+                  </circle>
+                `;
+              }).join("")}
+            </svg>
+            <div class="map-fallback-panel" id="map-fallback-panel"></div>
+          </div>
+        `;
+
+        mapContainer.innerHTML = fallbackMarkup;
+        const panel = document.getElementById("map-fallback-panel");
+        const renderPanel = (station) => {
+          if (!station) {
+            panel.innerHTML = `
+              <div class="map-fallback-title">Map fallback active</div>
+              <p class="map-fallback-note">Leaflet did not load, and there are no resolved stations available to plot yet.</p>
+            `;
+            return;
+          }
+
+          panel.innerHTML = `
+            <div class="map-fallback-title">Map fallback active</div>
+            <p class="map-fallback-note">Leaflet did not load, so the dashboard is using a built-in station plot instead. Click a point to inspect station-linked products.</p>
+            <div class="map-fallback-station">
+              <div class="popup-title">${escapeHtml(station.code)}</div>
+              <div class="popup-meta">${escapeHtml(station.name)}</div>
+              <div class="popup-meta">${escapeHtml([station.city, station.subdivision].filter(Boolean).join(", "))}</div>
+              ${station.weather_time ? `<div class="popup-meta">${escapeHtml(formatTime(station.weather_time))}</div>` : ""}
+              ${renderWeatherGrid(station.weather_details, station.weather_summary)}
+              <div class="popup-section-title">Products</div>
+              <ul class="map-fallback-list popup-products">
+                ${station.products.map((product) => `
+                  <li>
+                    <div class="popup-product-pill">
+                      <a class="popup-link" href="#${escapeHtml(product.feed_id)}" data-feed-id="${escapeHtml(product.feed_id)}">${escapeHtml(product.report_label || product.awips_id)}</a>
+                      <span class="popup-product-meta">Show in feed</span>
+                    </div>
+                  </li>
+                `).join("")}
+              </ul>
+            </div>
+          `;
+        };
+
+        renderPanel(state.stations[0]);
+        mapContainer.querySelectorAll(".fallback-station-dot").forEach((dot) => {
+          dot.addEventListener("click", () => {
+            const station = state.stations.find((item) => item.code === dot.dataset.stationCode);
+            if (station) {
+              renderPanel(station);
+            }
+          });
+        });
+      };
+
+      sortButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          sortButtons.forEach((item) => item.classList.toggle("active", item === button));
+          renderProducts(button.dataset.sort || "newest");
+        });
+      });
+      const allTypes = [...new Set(state.products.map((product) => product.product_type))].sort();
+      typeFilter.innerHTML = `<option value="">All types</option>${allTypes.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join("")}`;
+      const allStations = [...new Set(state.stations.map((station) => station.code))].sort();
+      stationOptions.innerHTML = allStations.map((code) => `<option value="${escapeHtml(code)}"></option>`).join("");
+      typeFilter.addEventListener("change", () => renderProducts(currentSort()));
+      stationFilter.addEventListener("input", () => renderProducts(currentSort()));
+
+      document.addEventListener("click", (event) => {
+        const link = event.target.closest("[data-feed-id]");
+        if (!link) {
+          return;
+        }
+        event.preventDefault();
+        focusFeedEntry(link.dataset.feedId);
+      });
+
+      if (window.L) {
+        renderLeafletMap();
+      } else {
+        renderFallbackMap();
+      }
+
+      renderProducts("newest");
+    </script>
+  </body>
+</html>
