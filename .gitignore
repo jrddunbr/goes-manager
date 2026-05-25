@@ -6,3 +6,6 @@
 *.tsv
 config/common.json
 config/retention.json
+.codex
+__pycache__/
+*.py[cod]
