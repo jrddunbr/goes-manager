@@ -1,0 +1,85 @@
+digraph ObjectPlatformV2 {
+  graph [
+    rankdir=LR,
+    bgcolor="white",
+    pad="0.25",
+    nodesep="0.45",
+    ranksep="0.75"
+  ];
+
+  node [
+    shape=box,
+    style="rounded,filled",
+    fontname="Helvetica",
+    fontsize=11,
+    fillcolor="#f8f3e7",
+    color="#333333"
+  ];
+
+  edge [
+    fontname="Helvetica",
+    fontsize=10,
+    color="#555555",
+    arrowsize=0.8
+  ];
+
+  satdump [label="SatDump output volume\nand manifests", fillcolor="#efe1ba"];
+  ingest_watcher [label="ingest-watcher", fillcolor="#d9ead3"];
+  queue [label="RabbitMQ\nqueues + retries + DLQ", fillcolor="#cfe2f3"];
+  ingest_uploader [label="ingest-uploader", fillcolor="#d9ead3"];
+  rustfs [label="RustFS\ncanonical + project buckets", fillcolor="#d0e4f7"];
+  couch [label="CouchDB\ncatalog + projections + control", fillcolor="#fce5cd"];
+  decoders [label="decoder-workers", fillcolor="#d9ead3"];
+  materializers [label="materializer-workers", fillcolor="#d9ead3"];
+  catalog [label="catalog-api", fillcolor="#d9d2e9"];
+  dashboard [label="dashboard-api", fillcolor="#d9d2e9"];
+  projects [label="project workers\nalerts / timelapse / analysis", fillcolor="#d9d2e9"];
+  retention [label="retention-controller", fillcolor="#ead1dc"];
+  meta_retention [label="metadata-retention-controller", fillcolor="#ead1dc"];
+  reconciler [label="reconciler", fillcolor="#ead1dc"];
+  backfill [label="backfill-runner", fillcolor="#ead1dc"];
+  observability [label="observability-agent", fillcolor="#ead1dc"];
+
+  satdump -> ingest_watcher [label="detect"];
+  ingest_watcher -> queue [label="ingest-jobs"];
+  queue -> ingest_uploader [label="consume"];
+  ingest_uploader -> rustfs [label="put source blob"];
+  ingest_uploader -> couch [label="write raw_product"];
+  ingest_uploader -> queue [label="decode-jobs"];
+
+  queue -> decoders [label="decode-jobs"];
+  decoders -> couch [label="write decoded_product"];
+  decoders -> queue [label="materialize-jobs"];
+
+  queue -> materializers [label="materialize-jobs"];
+  materializers -> couch [label="write projections"];
+  materializers -> queue [label="derivative-jobs"];
+
+  couch -> catalog [label="query docs"];
+  rustfs -> catalog [label="resolve objects"];
+  catalog -> dashboard [label="read API"];
+  queue -> projects [label="derivative-jobs"];
+  catalog -> projects [label="metadata lookup"];
+  rustfs -> projects [label="read source blobs"];
+  projects -> rustfs [label="write derivative blobs"];
+  projects -> couch [label="write project docs"];
+
+  couch -> retention [label="retention policy"];
+  rustfs -> retention [label="lifecycle state"];
+  retention -> rustfs [label="configure lifecycle"];
+  retention -> couch [label="write retention_event"];
+
+  couch -> meta_retention [label="expiry policy"];
+  meta_retention -> couch [label="tombstone / cleanup"];
+
+  rustfs -> reconciler [label="list objects"];
+  couch -> reconciler [label="list docs"];
+  queue -> reconciler [label="job outcomes"];
+  reconciler -> couch [label="repair docs"];
+  reconciler -> queue [label="replay jobs"];
+
+  backfill -> queue [label="replay jobs"];
+  backfill -> couch [label="write replay audit"];
+  observability -> couch [label="health docs"];
+  observability -> queue [label="reconcile-jobs"];
+}

@@ -1,0 +1,1 @@
+"""Alerts worker service."""

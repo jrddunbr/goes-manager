@@ -1,0 +1,100 @@
+digraph PrivilegeBoundaries {
+  graph [
+    rankdir=TB,
+    bgcolor="white",
+    pad="0.25",
+    nodesep="0.5",
+    ranksep="0.8"
+  ];
+
+  node [
+    shape=box,
+    style="rounded,filled",
+    fontname="Helvetica",
+    fontsize=11,
+    color="#333333"
+  ];
+
+  edge [
+    fontname="Helvetica",
+    fontsize=10,
+    color="#666666",
+    arrowsize=0.8
+  ];
+
+  subgraph cluster_public {
+    label="Read-facing services";
+    color="#b7b7b7";
+    style="rounded,dashed";
+    dashboard [label="dashboard-api\nread-only", fillcolor="#d9d2e9"];
+    catalog [label="catalog-api\nread-mostly", fillcolor="#d9d2e9"];
+  }
+
+  subgraph cluster_core {
+    label="Core write services";
+    color="#b7b7b7";
+    style="rounded,dashed";
+    uploader [label="ingest-uploader\nsource-writer", fillcolor="#d9ead3"];
+    decoders [label="decoder-workers", fillcolor="#d9ead3"];
+    materializers [label="materializer-workers", fillcolor="#d9ead3"];
+  }
+
+  subgraph cluster_project {
+    label="Project workers";
+    color="#b7b7b7";
+    style="rounded,dashed";
+    timelapse [label="timelapse-worker", fillcolor="#d9d2e9"];
+    alerts [label="alerts-worker", fillcolor="#d9d2e9"];
+    analysis [label="analysis-worker", fillcolor="#d9d2e9"];
+  }
+
+  subgraph cluster_control {
+    label="Privileged control plane";
+    color="#b7b7b7";
+    style="rounded,dashed";
+    retention [label="retention-controller\nlifecycle-admin", fillcolor="#ead1dc"];
+    metadata [label="metadata-retention-controller", fillcolor="#ead1dc"];
+    reconciler [label="reconciler\nrepair authority", fillcolor="#ead1dc"];
+  }
+
+  rustfs_source [label="RustFS\ngoes-source", fillcolor="#d0e4f7"];
+  rustfs_projects [label="RustFS\nproject buckets", fillcolor="#d0e4f7"];
+  couch_catalog [label="CouchDB\ncatalog", fillcolor="#fce5cd"];
+  couch_proj [label="CouchDB\nprojections + project docs", fillcolor="#fce5cd"];
+  couch_control [label="CouchDB\ncontrol + audit", fillcolor="#fce5cd"];
+
+  uploader -> rustfs_source [label="rw"];
+  uploader -> couch_catalog [label="rw"];
+  decoders -> rustfs_source [label="r"];
+  decoders -> couch_catalog [label="rw"];
+  materializers -> couch_catalog [label="r"];
+  materializers -> couch_proj [label="rw"];
+
+  catalog -> couch_catalog [label="r"];
+  catalog -> couch_proj [label="r"];
+  dashboard -> rustfs_source [label="r"];
+  dashboard -> rustfs_projects [label="r"];
+  dashboard -> couch_proj [label="r via API"];
+
+  timelapse -> rustfs_source [label="r"];
+  timelapse -> rustfs_projects [label="rw own"];
+  timelapse -> couch_proj [label="rw own"];
+  alerts -> rustfs_source [label="r"];
+  alerts -> rustfs_projects [label="rw own"];
+  alerts -> couch_proj [label="rw own"];
+  analysis -> rustfs_source [label="r"];
+  analysis -> rustfs_projects [label="rw own"];
+  analysis -> couch_proj [label="rw own"];
+
+  retention -> rustfs_source [label="lifecycle admin"];
+  retention -> rustfs_projects [label="lifecycle admin"];
+  retention -> couch_control [label="rw"];
+  metadata -> couch_catalog [label="rw cleanup"];
+  metadata -> couch_proj [label="rw cleanup"];
+  metadata -> couch_control [label="rw audit"];
+  reconciler -> rustfs_source [label="r"];
+  reconciler -> rustfs_projects [label="r"];
+  reconciler -> couch_catalog [label="rw repair"];
+  reconciler -> couch_proj [label="rw repair"];
+  reconciler -> couch_control [label="rw repair"];
+}

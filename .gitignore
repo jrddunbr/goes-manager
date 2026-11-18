@@ -1,11 +1,44 @@
+# IDE and local agent settings
 *.iml
 .idea/
-/config/health_monitor.test.json
-*.txt
-*.log
-*.tsv
-config/common.json
-config/retention.json
 .codex
+
+# Local credentials and deployment settings; keep distributable examples
+/.env
+/.env.*
+!/.env*.sample
+!/.env*.example
+/.aws/
+/config/*.json
+!/config/*.sample.json
+
+# Received satellite data and generated service/deployment state
+/EMWIN/
+/satellite_raw/
+/state/
+/config/state/
+/.object-platform/
+
+# Local diagnostic captures
+*.log
+/df.txt
+/index.txt
+/log.txt
+/goes*-live-mtimes.txt
+/*.tsv
+
+# Python environments, caches, build output, and coverage
+/.venv/
+/venv/
 __pycache__/
 *.py[cod]
+*.egg-info/
+/build/
+/dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/

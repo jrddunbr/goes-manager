@@ -21,6 +21,17 @@ The system consists of several Python modules:
 - **goes_retention**: Implements data retention policies and cleanup
 - **goes_manager**: Core library utilities and configuration management
 
+## Podman deployment and archive migration
+
+For the single-Raspberry-Pi object platform, see the
+[deployment guide](docs/software/object-platform/deployment.md). It includes
+SSD-backed storage, verified import of an existing SatDump data tree, and a
+rootless Podman boot service. Start with a read-only plan:
+
+```bash
+python3 scripts/deploy_object_platform.py --source /mnt/ssd/satellite_raw --data-dir /mnt/ssd/goes-platform --plan
+```
+
 ## Getting Started
 
 ### Prerequisites

@@ -1,0 +1,249 @@
+# Single-host Podman deployment. Run scripts/deploy_object_platform.py.
+name: goes-object-platform
+
+x-app: &app
+  image: localhost/goes-object-platform:0.1.0
+  build:
+    context: .
+    dockerfile: containers/object-platform/Containerfile
+    args:
+      PYTHON_IMAGE: ${PYTHON_IMAGE:-docker.io/library/python:3.13-slim}
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: k8s-file
+    options:
+      max-size: "10mb"
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/readyz', timeout=3).read()"]
+    interval: 30s
+    timeout: 5s
+    retries: 6
+    start_period: 30s
+
+x-env: &env
+  OBJECT_PLATFORM_INPUT_ROOT: /ingest
+  OBJECT_PLATFORM_RABBITMQ_URL: amqp://${RABBITMQ_USER:-goes}:${RABBITMQ_PASSWORD:?Run deployment script}@rabbitmq:5672/
+  OBJECT_PLATFORM_COUCHDB_URL: http://${COUCHDB_USER:-goes}:${COUCHDB_PASSWORD:?Run deployment script}@couchdb:5984/
+  OBJECT_PLATFORM_RUSTFS_ENDPOINT: http://rustfs:9000
+  OBJECT_PLATFORM_RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?Run deployment script}
+  OBJECT_PLATFORM_RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?Run deployment script}
+  OBJECT_PLATFORM_HEALTH_PORT: 8080
+  OBJECT_PLATFORM_SCAN_INTERVAL_SECONDS: ${OBJECT_PLATFORM_SCAN_INTERVAL_SECONDS:-60}
+  OBJECT_PLATFORM_RETENTION_INTERVAL_SECONDS: ${OBJECT_PLATFORM_RETENTION_INTERVAL_SECONDS:-3600}
+  OBJECT_PLATFORM_RETENTION_GRACE_SECONDS: ${OBJECT_PLATFORM_RETENTION_GRACE_SECONDS:-86400}
+  OBJECT_PLATFORM_METADATA_RETENTION_DAYS: ${OBJECT_PLATFORM_METADATA_RETENTION_DAYS:-7}
+  OBJECT_PLATFORM_RETENTION_ENABLED: ${OBJECT_PLATFORM_RETENTION_ENABLED:-false}
+
+services:
+  rustfs:
+    logging:
+      driver: k8s-file
+      options:
+        max-size: "10mb"
+    image: ${RUSTFS_IMAGE:-docker.io/rustfs/rustfs:1.0.5}
+    command: ["/data"]
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?Run deployment script}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?Run deployment script}
+      RUSTFS_CONSOLE_ENABLE: "false"
+      RUSTFS_OBS_LOG_DIRECTORY: /logs
+    volumes:
+      - ${OBJECT_PLATFORM_DATA_DIR:?Set SSD data directory}/rustfs:/data:U
+      - ${OBJECT_PLATFORM_DATA_DIR}/rustfs-logs:/logs:U
+    ports: ["127.0.0.1:9000:9000"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  couchdb:
+    logging:
+      driver: k8s-file
+      options:
+        max-size: "10mb"
+    user: "5984:5984"
+    image: ${COUCHDB_IMAGE:-docker.io/library/couchdb:3.5.0}
+    restart: unless-stopped
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER:-goes}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?Run deployment script}
+      ERL_FLAGS: "+S 2:2 +A 4"
+    volumes:
+      - ${OBJECT_PLATFORM_DATA_DIR}/couchdb:/opt/couchdb/data:U
+      - ./containers/object-platform/couchdb.ini:/opt/couchdb/etc/local.d/single-node.ini:ro
+    ports: ["127.0.0.1:5984:5984"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5984/_up"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+
+  rabbitmq:
+    logging:
+      driver: k8s-file
+      options:
+        max-size: "10mb"
+    image: ${RABBITMQ_IMAGE:-docker.io/library/rabbitmq:4.2.0-management}
+    hostname: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-goes}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Run deployment script}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 2:2 +A 4"
+    volumes:
+      - ${OBJECT_PLATFORM_DATA_DIR}/rabbitmq:/var/lib/rabbitmq:U
+    ports: ["127.0.0.1:15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+  platform-init:
+    <<: *app
+    command: ["python", "-m", "object_platform_bootstrap"]
+    restart: "no"
+    healthcheck:
+      disable: true
+    profiles: ["tools"]
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: platform-init
+      OBJECT_PLATFORM_ROLE: bootstrap
+
+  ingest-watcher:
+    <<: *app
+    command: ["python", "-m", "object_platform_ingest_watcher"]
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: ingest-watcher
+      OBJECT_PLATFORM_ROLE: ingest-watcher
+    volumes:
+      - ${OBJECT_PLATFORM_SOURCE_DIR:?Set SatDump source directory}:/ingest:ro
+
+  ingest-uploader:
+    <<: *app
+    command: ["python", "-m", "object_platform_ingest_uploader"]
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: ingest-uploader
+      OBJECT_PLATFORM_ROLE: ingest-uploader
+    volumes:
+      - ${OBJECT_PLATFORM_SOURCE_DIR:?Set SatDump source directory}:/ingest:ro
+
+  decoder-worker:
+    <<: *app
+    command: ["python", "-m", "object_platform_decoder_worker"]
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: decoder-worker
+      OBJECT_PLATFORM_ROLE: decoder-worker
+
+  materializer-worker:
+    <<: *app
+    command: ["python", "-m", "object_platform_materializer_worker"]
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: materializer-worker
+      OBJECT_PLATFORM_ROLE: materializer-worker
+
+  catalog-api:
+    <<: *app
+    command: ["python", "-m", "object_platform_catalog_api"]
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: catalog-api
+      OBJECT_PLATFORM_ROLE: catalog-api
+
+  dashboard-api:
+    <<: *app
+    command: ["python", "-m", "object_platform_dashboard_api"]
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: dashboard-api
+      OBJECT_PLATFORM_ROLE: dashboard-api
+      OBJECT_PLATFORM_CATALOG_API_URL: http://catalog-api:8080
+    ports: ["${OBJECT_PLATFORM_DASHBOARD_BIND:-127.0.0.1}:18090:8080"]
+
+  retention-controller:
+    <<: *app
+    command: ["python", "-m", "object_platform_retention_controller"]
+    profiles: ["retention"]
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: retention-controller
+      OBJECT_PLATFORM_ROLE: retention-controller
+
+  metadata-retention-controller:
+    <<: *app
+    command: ["python", "-m", "object_platform_metadata_retention_controller"]
+    profiles: ["retention"]
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: metadata-retention-controller
+      OBJECT_PLATFORM_ROLE: metadata-retention-controller
+
+  reconciler:
+    <<: *app
+    command: ["python", "-m", "object_platform_reconciler"]
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: reconciler
+      OBJECT_PLATFORM_ROLE: reconciler
+    volumes:
+      - ${OBJECT_PLATFORM_SOURCE_DIR:?Set SatDump source directory}:/ingest:ro
+
+  backfill-runner:
+    <<: *app
+    command: ["python", "-m", "object_platform_backfill_runner"]
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: backfill-runner
+      OBJECT_PLATFORM_ROLE: backfill-runner
+    volumes:
+      - ${OBJECT_PLATFORM_SOURCE_DIR:?Set SatDump source directory}:/ingest:ro
+
+  migration:
+    <<: *app
+    command: ["python", "-m", "object_platform_migration"]
+    restart: "no"
+    healthcheck:
+      disable: true
+    profiles: ["tools"]
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: migration
+      OBJECT_PLATFORM_ROLE: migration
+    volumes:
+      - ${OBJECT_PLATFORM_SOURCE_DIR:?Set SatDump source directory}:/ingest:ro
+      - ${OBJECT_PLATFORM_DATA_DIR}/migration:/reports:U
+
+  testdata-seeder:
+    <<: *app
+    command: ["python", "-m", "object_platform_testdata_seeder"]
+    profiles: ["development"]
+    healthcheck:
+      disable: true
+    environment:
+      <<: *env
+      OBJECT_PLATFORM_SERVICE_NAME: testdata-seeder
+      OBJECT_PLATFORM_ROLE: testdata-seeder
+      OBJECT_PLATFORM_SEED_ROOT: /seed-output
+    volumes:
+      - ${OBJECT_PLATFORM_DATA_DIR}/testdata:/seed-output:U
+
+  goes-dashboard:
+    <<: *app
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 6
+    command: ["python", "-m", "goes_dashboard", "--root", "/ingest", "--hours", "${GOES_DASHBOARD_WINDOW_HOURS:-168}", "--host", "0.0.0.0", "--port", "8080"]
+    volumes:
+      - ${OBJECT_PLATFORM_SOURCE_DIR}:/ingest:ro
+    ports: ["${OBJECT_PLATFORM_DASHBOARD_BIND:-127.0.0.1}:18094:8080"]

@@ -1,0 +1,9 @@
+*
+!requirements.object-platform.lock
+!pyproject.toml
+!LICENSE
+!readme.md
+!src/
+!src/**
+**/__pycache__
+**/*.pyc

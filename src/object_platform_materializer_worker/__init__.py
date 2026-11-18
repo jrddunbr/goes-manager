@@ -1,0 +1,1 @@
+"""Materializer worker service."""

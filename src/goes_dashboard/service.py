@@ -1030,25 +1030,15 @@ def parse_product(path: Path, airport_index: dict[str, StationLocation], root: P
     except OSError:
         return product
 
-    title, summary = summarise_text(text, product.awips_id)
-    station_codes = extract_station_codes(text, product, airport_index)
-    lat_lon_centroid = parse_lat_lon_centroid(text)
-    related_reports = build_related_reports(text, product)
-    specialized = build_specialized_text_details(text, product)
-    if specialized:
-        title, summary, detail_sections = specialized
-    else:
-        detail_sections = build_detail_sections(text, product, airport_index, station_codes, lat_lon_centroid)
+    analysis = analyze_text_product(text, product, airport_index)
     return EmwinProduct(
         **{
             **asdict(product),
-            "title": title,
-            "summary": summary,
-            "station_codes": station_codes,
-            "lat_lon_centroid": lat_lon_centroid,
+            **{key: analysis[key] for key in (
+                "title", "summary", "station_codes", "lat_lon_centroid",
+                "detail_sections", "related_reports",
+            )},
             "product_type": classify_product_type(product),
-            "detail_sections": detail_sections,
-            "related_reports": related_reports,
         }
     )
 

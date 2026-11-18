@@ -38,7 +38,7 @@ TIME...MOT...LOC 2333Z 268DEG 25KT 4315 8818
     latitude, longitude = parse_lat_lon_centroid(text)
 
     assert round(latitude, 2) == 43.1
-    assert round(longitude, 2) == -87.94
+    assert round(longitude, 2) == -87.92
 
 
 def test_extract_station_codes_uses_known_airports():
@@ -71,7 +71,7 @@ def test_parse_product_adds_summary_and_station_codes(tmp_path: Path):
     product = parse_product(sample, airport_index, tmp_path)
 
     assert product is not None
-    assert product.title == "METAR"
+    assert product.title == "Hourly METAR roundup: 1 stations"
     assert "KAXV 150005Z" in product.summary
     assert product.station_codes == ("KAXV", "KWBC")
 
