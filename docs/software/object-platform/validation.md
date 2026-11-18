@@ -20,6 +20,20 @@ inspection field names. The pinned RustFS 1.0.5 image index includes Linux ARM64
 - Removed isolated test containers and networking after validation; temporary
   reports and pulled images were retained.
 
+## Python 3.14 update
+
+The application now requires Python 3.14+ and defaults to the official
+`python:3.14-slim` image. Revalidation passed all 56 tests on the Arch host's
+Python 3.14.9 and inside a newly built Python 3.14.10 application container using
+the installed package and pinned runtime dependencies. `pip check` reported no
+broken requirements. The pinned native dependencies (Pillow, MarkupSafe, and
+charset-normalizer) have Python 3.14 Linux ARM64 wheels compatible with the
+Debian 12 target. These checks do not substitute for running the stack on the Pi.
+
+The host deployment script still runs with Python 3.11+ and Podman 4.3.1. It
+supplies the newer application runtime through containers. Existing saved
+Python-image pins must be updated explicitly, as described in the deployment guide.
+
 The unit suite covers import resume, readback failure reporting, path confinement,
 symlink exclusion, recovery of missing jobs and metadata, retention holds, profile
 preservation, pagination during deletion, queue confirmation/acknowledgement order,

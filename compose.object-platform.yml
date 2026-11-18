@@ -7,7 +7,7 @@ x-app: &app
     context: .
     dockerfile: containers/object-platform/Containerfile
     args:
-      PYTHON_IMAGE: ${PYTHON_IMAGE:-docker.io/library/python:3.13-slim}
+      PYTHON_IMAGE: ${PYTHON_IMAGE:-docker.io/library/python:3.14-slim}
   restart: unless-stopped
   security_opt: ["no-new-privileges:true"]
   logging:

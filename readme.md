@@ -36,7 +36,7 @@ python3 scripts/deploy_object_platform.py --source /mnt/ssd/satellite_raw --data
 
 ### Prerequisites
 
-- Python 3.13.7 or compatible version (Earlier versions may work, but are not tested)
+- Python 3.14 or newer (tested with Python 3.14.9). The Podman deployment supplies this runtime inside containers.
 - virtualenv for package management (optional)
 
 This project is specifically designed with the following use case in mind:

@@ -22,7 +22,7 @@ IMAGES = {
     "RUSTFS_IMAGE": "docker.io/rustfs/rustfs:1.0.5",
     "COUCHDB_IMAGE": "docker.io/library/couchdb:3.5.0",
     "RABBITMQ_IMAGE": "docker.io/library/rabbitmq:4.2.0-management",
-    "PYTHON_IMAGE": "docker.io/library/python:3.13-slim",
+    "PYTHON_IMAGE": "docker.io/library/python:3.14-slim",
 }
 
 

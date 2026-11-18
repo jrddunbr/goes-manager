@@ -7,7 +7,7 @@ name = "goes-manager"
 version = "0.1.0"
 description = "Tools for monitoring and managing GOES satellite ground-station data"
 readme = "readme.md"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
   "boto3>=1.35",
   "Flask>=3.0",
@@ -21,6 +21,7 @@ authors = [
 ]
 classifiers = [
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.14",
   "Operating System :: POSIX :: Linux",
 ]
 

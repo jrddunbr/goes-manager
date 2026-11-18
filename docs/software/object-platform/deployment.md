@@ -1,8 +1,9 @@
 # Single Raspberry Pi deployment with Podman
 
 This deployment targets **64-bit Raspberry Pi OS / Debian 12 with Podman 4.3.1**,
-Python 3.11+, and an SSD. Arch with newer Podman can run the same deployment for
-testing. Install `podman` and `podman-compose` (not Docker Compose). The script
+an SSD, and Python 3.11+ on the host for the deployment script. Application
+packages and containers target Python 3.14; the Pi's OS Python can remain unchanged.
+Arch with newer Podman can run the same deployment for testing. Install `podman` and `podman-compose` (not Docker Compose). The script
 uses explicit health polling rather than newer Compose `up --wait` features.
 Rootless Podman must work for the account that owns the deployment; check
 `podman info` before starting. All image names include their registry.
@@ -182,6 +183,12 @@ to return to the original filesystem services. Do not delete store directories
 or reset credentials. Original source data is retained. Quiesce the stack before
 backing up the dedicated SSD data directory, credentials, and deployment files;
 file copies of live databases are not a consistent backup.
+
+The application defaults to `docker.io/library/python:3.14-slim`. For an existing
+installation whose `.env.object-platform` pins a Python 3.13 image, change
+`PYTHON_IMAGE` to `docker.io/library/python:3.14-slim` before redeploying. Saved
+pins are preserved until explicitly changed. The rebuilt containers use Python
+3.14 without changing the host interpreter.
 
 The deployment pins image digests on first use. Image upgrades are intentional:
 back up stores, edit the corresponding image setting in `.env.object-platform`,
